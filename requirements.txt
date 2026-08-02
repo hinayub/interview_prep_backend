@@ -1,0 +1,19 @@
+Django>=5.2.8,<6.0
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+django-environ
+pdfplumber
+python-docx
+google-genai
+requests
+
+# Installed but dormant until TASK_RUNNER=celery. Redis has no native Windows
+# build; see agents/tasks.py for the thread-based default runner.
+celery[redis]
+
+pytest
+pytest-django
+pytest-mock
+# Test-only: builds real PDF fixtures at runtime so no binaries are committed.
+reportlab
