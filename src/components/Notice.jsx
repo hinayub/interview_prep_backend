@@ -1,9 +1,9 @@
 const TONES = {
-  problem: 'border-flag/25 bg-flag/6 text-flag',
-  done: 'border-mint/25 bg-mint/6 text-mint',
+  problem: 'border-tally/35 bg-tally/12 text-tally',
+  done: 'border-jade/35 bg-jade/12 text-jade',
   // For things that are neither a failure nor a success — "your session ended"
   // is information, and colouring it like an error implies they did something wrong.
-  note: 'border-azure/25 bg-azure/6 text-ink-soft',
+  note: 'border-sodium/35 bg-sodium/12 text-lit-soft',
 }
 
 /**

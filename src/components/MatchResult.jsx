@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import CueLamp from './CueLamp'
 import MatchScore, { bandFor } from './MatchScore'
+import ModelCredit from './ModelBadge'
 import SkillTally from './SkillTally'
 
 /**
@@ -34,12 +35,12 @@ function Header({ analysis, status, children }) {
   const subtitle = [analysis.company, analysis.resume_filename].filter(Boolean).join(' · ')
 
   return (
-    <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-line bg-veil/60 px-5 py-4">
+    <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-seam bg-flat/60 px-5 py-4">
       <div className="min-w-0">
         <h3 className="truncate font-display text-[0.9375rem] font-bold tracking-[-0.015em]">
           {analysis.job_title}
         </h3>
-        <p className="mt-1 truncate font-mono text-eyebrow text-mist">{subtitle}</p>
+        <p className="mt-1 truncate font-mono text-eyebrow text-shade">{subtitle}</p>
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
@@ -61,7 +62,7 @@ function Delta({ from, to }) {
   const change = to - from
   if (change === 0) {
     return (
-      <span className="rounded-full border border-line bg-canvas px-2.5 py-1 font-mono text-eyebrow text-slate">
+      <span className="rounded-full border border-seam bg-house px-2.5 py-1 font-mono text-eyebrow text-dusk">
         Same as your last run
       </span>
     )
@@ -71,7 +72,7 @@ function Delta({ from, to }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-eyebrow ${
-        up ? 'border-mint/25 bg-mint/8 text-mint' : 'border-flag/25 bg-flag/8 text-flag'
+        up ? 'border-jade/35 bg-jade/12 text-jade' : 'border-tally/35 bg-tally/12 text-tally'
       }`}
       title={`Your last run scored ${from}`}
     >
@@ -103,7 +104,7 @@ function Working({ analysis }) {
         status={
           <p className="flex items-center gap-2">
             <CueLamp state="live" pulse />
-            <span className="eyebrow text-azure">Reading</span>
+            <span className="eyebrow text-sodium">Reading</span>
           </p>
         }
       />
@@ -112,26 +113,27 @@ function Working({ analysis }) {
         {/* A sketch of the card that is coming, so nothing jumps when it lands. The
             dot running the line is the same motion the landing page uses to thread
             its three steps: something is moving, nothing is claimed finished. */}
-        <div className="relative h-2 overflow-hidden rounded-full bg-veil">
+        <div className="relative h-2 overflow-hidden rounded-full bg-seam">
           <span
             aria-hidden="true"
-            className="animate-sweep absolute top-1/2 size-2 -translate-y-1/2 rounded-full bg-azure"
+            className="animate-sweep absolute top-1/2 size-2 -translate-y-1/2 rounded-full bg-sodium"
           />
         </div>
 
         <div aria-hidden="true" className="mt-7 space-y-2.5">
-          <div className="animate-breathe h-3 w-full rounded-full bg-veil" />
-          <div className="animate-breathe h-3 w-[92%] rounded-full bg-veil" />
-          <div className="animate-breathe h-3 w-[64%] rounded-full bg-veil" />
+          <div className="animate-breathe h-3 w-full rounded-full bg-flat" />
+          <div className="animate-breathe h-3 w-[92%] rounded-full bg-flat" />
+          <div className="animate-breathe h-3 w-[64%] rounded-full bg-flat" />
         </div>
 
-        <p className="mt-7 text-sm leading-relaxed text-slate" role="status">
-          The agent is comparing your resume against the posting. It runs on a local model,
-          so this usually takes 20 to 60 seconds. You can leave this page open.
+        <p className="mt-7 text-sm leading-relaxed text-dusk" role="status">
+          Your resume and the posting have gone to both models at once, and the first
+          one to answer is the score you get — usually a few seconds, up to a minute if
+          the local model takes it. You can leave this page open.
         </p>
 
         {seconds !== null && (
-          <p className="mt-1.5 font-mono text-eyebrow text-mist">{seconds}s elapsed</p>
+          <p className="mt-1.5 font-mono text-eyebrow text-shade">{seconds}s elapsed</p>
         )}
       </div>
     </section>
@@ -143,13 +145,13 @@ function Failed({ analysis, onRetry }) {
     <section className="panel overflow-hidden">
       <Header
         analysis={analysis}
-        status={<span className="eyebrow text-flag">Stopped</span>}
+        status={<span className="eyebrow text-tally">Stopped</span>}
       />
 
       <div className="space-y-4 px-5 py-5">
         {/* The agent's own message, not a generic apology: "Ollama is not running"
             and "the model returned unusable JSON" need different responses. */}
-        <p role="alert" className="text-sm leading-relaxed text-ink-soft">
+        <p role="alert" className="text-sm leading-relaxed text-lit-soft">
           {analysis.error_message || 'The agent stopped before it produced a score.'}
         </p>
 
@@ -177,7 +179,7 @@ function Complete({ analysis, previous }) {
     // animate-rise, not a scroll reveal: this card is why the page exists, so it
     // arrives on mount rather than waiting for a scroll that may never come.
     <section className="animate-rise panel overflow-hidden">
-      <Header analysis={analysis} status={<span className="eyebrow text-mint">Analysed</span>} />
+      <Header analysis={analysis} status={<span className="eyebrow text-jade">Analysed</span>} />
 
       {/* Read out once, for anyone who was not watching the page when it landed. */}
       <p className="sr-only" role="status">
@@ -193,22 +195,31 @@ function Complete({ analysis, previous }) {
       </div>
 
       {analysis.reasoning && (
-        <div className="border-t border-line px-5 py-6 sm:px-6">
+        <div className="border-t border-seam px-5 py-6 sm:px-6">
           <h4 className="eyebrow mb-2.5">Why this score</h4>
-          <p className="leading-relaxed text-ink-soft">{analysis.reasoning}</p>
+          <p className="leading-relaxed text-lit-soft">{analysis.reasoning}</p>
         </div>
       )}
 
-      <div className="border-t border-line px-5 py-6 sm:px-6">
+      <div className="border-t border-seam px-5 py-6 sm:px-6">
         <SkillTally matched={analysis.matched_skills} missing={analysis.missing_skills} />
       </div>
 
-      {analysed && (
-        <footer className="border-t border-line bg-veil/40 px-5 py-3 sm:px-6">
-          <p className="font-mono text-eyebrow text-mist">
-            {analysed}
-            {took !== null && ` · took ${took}s`}
-          </p>
+      {(analysed || analysis.model_used) && (
+        <footer className="space-y-2.5 border-t border-seam bg-flat/40 px-5 py-3 sm:px-6">
+          {analysed && (
+            <p className="font-mono text-eyebrow text-shade">
+              {analysed}
+              {took !== null && ` · took ${took}s`}
+            </p>
+          )}
+          {/* "Took 41s" and "Llama 3 answered because Gemini failed" are the same
+              story told twice, so they sit together. */}
+          <ModelCredit
+            model={analysis.model_used}
+            note={analysis.race_note}
+            prefix="Scored by"
+          />
         </footer>
       )}
     </section>

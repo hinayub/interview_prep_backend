@@ -15,18 +15,18 @@ export default function Field({ id, label, error, hint, as = 'input', className 
         className={[
           'field-input',
           as === 'textarea' ? 'min-h-40 resize-y leading-relaxed' : '',
-          error ? 'border-flag focus:border-flag focus:ring-flag/12' : '',
+          error ? 'border-tally focus:border-tally focus:ring-tally/12' : '',
         ].join(' ')}
         {...props}
       />
 
       {hint && !error && (
-        <p id={`${id}-hint`} className="mt-1.5 font-mono text-eyebrow text-mist">
+        <p id={`${id}-hint`} className="mt-1.5 font-mono text-eyebrow text-shade">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${id}-error`} className="mt-1.5 text-sm text-flag">
+        <p id={`${id}-error`} className="mt-1.5 text-sm text-tally">
           {error}
         </p>
       )}

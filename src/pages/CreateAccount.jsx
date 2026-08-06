@@ -68,14 +68,14 @@ export default function CreateAccount() {
 
         <Notice>{generalError}</Notice>
 
-        <button type="submit" disabled={isLoading} className="btn-ink w-full">
+        <button type="submit" disabled={isLoading} className="btn-lamp w-full">
           {isLoading ? 'Creating account…' : 'Create account'}
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-slate">
+      <p className="mt-6 text-sm text-dusk">
         Already have one?{' '}
-        <Link to="/sign-in" className="font-medium text-azure underline-offset-4 hover:underline">
+        <Link to="/sign-in" className="font-medium text-sodium underline-offset-4 hover:underline">
           Sign in
         </Link>
       </p>

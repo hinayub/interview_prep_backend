@@ -20,8 +20,8 @@ const BANDS = [
     min: 0,
     max: 40,
     label: 'Weak fit',
-    chip: 'border-flag/25 bg-flag/8 text-flag',
-    zone: 'bg-flag/25',
+    chip: 'border-tally/35 bg-tally/12 text-tally',
+    zone: 'bg-tally/45',
     note: 'Your resume does not yet evidence what this role asks for. Start with the gaps below.',
   },
   {
@@ -29,8 +29,8 @@ const BANDS = [
     min: 40,
     max: 70,
     label: 'Partial fit',
-    chip: 'border-azure/25 bg-azure/8 text-azure',
-    zone: 'bg-azure/30',
+    chip: 'border-sodium/35 bg-sodium/12 text-sodium',
+    zone: 'bg-sodium/45',
     note: 'Close the gaps below before you send it.',
   },
   {
@@ -38,8 +38,8 @@ const BANDS = [
     min: 70,
     max: 100,
     label: 'Strong fit',
-    chip: 'border-mint/25 bg-mint/8 text-mint',
-    zone: 'bg-mint/30',
+    chip: 'border-jade/35 bg-jade/12 text-jade',
+    zone: 'bg-jade/45',
     note: 'Worth sending as your resume stands.',
   },
 ]
@@ -81,7 +81,7 @@ export default function MatchScore({ score, children }) {
           >
             {band.label}
           </span>
-          <p className="text-sm leading-snug text-slate">{verdictLine(score)}</p>
+          <p className="text-sm leading-snug text-dusk">{verdictLine(score)}</p>
         </div>
 
         {/* Score movement, when there is a previous run to compare against — it
@@ -106,7 +106,7 @@ export default function MatchScore({ score, children }) {
               style={{ width: `${zone.max - zone.min}%` }}
               className={[
                 'pb-1.5 font-mono text-eyebrow tracking-[0.14em] uppercase',
-                zone.key === band.key ? 'text-ink-soft' : 'text-mist',
+                zone.key === band.key ? 'text-lit-soft' : 'text-shade',
               ].join(' ')}
             >
               {zone.key}
@@ -123,16 +123,16 @@ export default function MatchScore({ score, children }) {
               <span
                 key={zone.key}
                 style={{ width: `${zone.max - zone.min}%` }}
-                className={zone.key === band.key ? zone.zone : 'bg-veil'}
+                className={zone.key === band.key ? zone.zone : 'bg-seam'}
               />
             ))}
           </div>
 
-          {/* The score is the marker — see .score-marker in index.css. Azure, not
-              navy: in this palette azure is the colour of measurement and navy is
-              reserved for the one primary action on a screen. */}
+          {/* The score is the marker — see .score-marker in index.css. Sodium,
+              because in this room sodium is the light: it marks what Cortex
+              measured, and this reading is the measurement. */}
           <div className="score-marker" style={{ '--at': placed ? `${score}%` : '0%' }}>
-            <span className="flex h-10 items-center rounded-full bg-gradient-to-r from-azure to-azure-lift px-3.5 font-display text-xl font-extrabold tracking-[-0.03em] text-white shadow-lift tabular-nums">
+            <span className="flex h-10 items-center rounded-full bg-gradient-to-r from-sodium to-sodium-hi px-3.5 font-display text-xl font-extrabold tracking-[-0.03em] text-house shadow-lamp tabular-nums">
               {score}
             </span>
           </div>
@@ -143,12 +143,12 @@ export default function MatchScore({ score, children }) {
             <p
               key={zone.key}
               style={{ width: `${zone.max - zone.min}%` }}
-              className="font-mono text-eyebrow text-mist"
+              className="font-mono text-eyebrow text-shade"
             >
               {zone.min}
             </p>
           ))}
-          <p className="font-mono text-eyebrow text-mist">100</p>
+          <p className="font-mono text-eyebrow text-shade">100</p>
         </div>
       </div>
     </div>

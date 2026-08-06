@@ -62,14 +62,14 @@ export default function SignIn() {
 
         <Notice>{error && !Object.keys(invalid).length ? errorMessage(error, 'That username and password do not match.') : null}</Notice>
 
-        <button type="submit" disabled={isLoading} className="btn-ink w-full">
+        <button type="submit" disabled={isLoading} className="btn-lamp w-full">
           {isLoading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-slate">
+      <p className="mt-6 text-sm text-dusk">
         First time here?{' '}
-        <Link to="/create-account" className="font-medium text-azure underline-offset-4 hover:underline">
+        <Link to="/create-account" className="font-medium text-sodium underline-offset-4 hover:underline">
           Create an account
         </Link>
       </p>

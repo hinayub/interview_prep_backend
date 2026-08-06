@@ -21,7 +21,7 @@ const MIN_CHARS = 40
 
 function CategoryChip({ category }) {
   return (
-    <span className="rounded-full border border-line bg-canvas px-2.5 py-1 font-mono text-eyebrow uppercase tracking-[0.14em] text-slate">
+    <span className="rounded-full border border-seam bg-house px-2.5 py-1 font-mono text-eyebrow uppercase tracking-[0.14em] text-dusk">
       {CATEGORY_LABELS[category] ?? category}
     </span>
   )
@@ -65,7 +65,7 @@ function AnswerForm({ question, onSubmit, submitting, error }) {
 
   return (
     <form
-      className="border-t border-line px-5 py-5"
+      className="border-t border-seam px-5 py-5"
       onSubmit={(event) => {
         event.preventDefault()
         if (!short) onSubmit({ text: text.trim(), secondsTaken: seconds })
@@ -75,7 +75,7 @@ function AnswerForm({ question, onSubmit, submitting, error }) {
         <label htmlFor={inputId} className="field-label mb-0">
           Your answer
         </label>
-        <p className="flex items-center gap-1.5 font-mono text-eyebrow text-mist">
+        <p className="flex items-center gap-1.5 font-mono text-eyebrow text-shade">
           <ClockIcon className="size-3.5" />
           <span aria-hidden="true">{clock(seconds)}</span>
         </p>
@@ -94,13 +94,13 @@ function AnswerForm({ question, onSubmit, submitting, error }) {
       />
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p id={`${inputId}-hint`} className="font-mono text-eyebrow text-mist">
+        <p id={`${inputId}-hint`} className="font-mono text-eyebrow text-shade">
           {short
             ? `${remaining} more character${remaining === 1 ? '' : 's'} before this can be scored`
             : `${text.trim().length.toLocaleString()} characters`}
         </p>
 
-        <button type="submit" disabled={short || submitting} className="btn-ink text-sm">
+        <button type="submit" disabled={short || submitting} className="btn-lamp text-sm">
           {submitting ? 'Submitting…' : 'Submit answer'}
         </button>
       </div>
@@ -109,7 +109,7 @@ function AnswerForm({ question, onSubmit, submitting, error }) {
         <Notice>{error}</Notice>
       </div>
 
-      <p className="mt-3 text-sm leading-relaxed text-mist">
+      <p className="mt-3 text-sm leading-relaxed text-shade">
         You cannot change an answer once it is submitted — the real interview does not
         offer a second attempt either.
       </p>
@@ -119,18 +119,18 @@ function AnswerForm({ question, onSubmit, submitting, error }) {
 
 function GivenAnswer({ answer }) {
   return (
-    <div className="border-t border-line px-5 py-5">
+    <div className="border-t border-seam px-5 py-5">
       <div className="mb-2 flex items-end justify-between gap-4">
         <h4 className="eyebrow">What you said</h4>
         {answer.seconds_taken !== null && answer.seconds_taken !== undefined && (
-          <p className="flex items-center gap-1.5 font-mono text-eyebrow text-mist">
+          <p className="flex items-center gap-1.5 font-mono text-eyebrow text-shade">
             <ClockIcon className="size-3.5" />
             {clock(answer.seconds_taken)}
           </p>
         )}
       </div>
       {/* whitespace-pre-line: they typed paragraphs, so they get paragraphs back. */}
-      <p className="leading-relaxed whitespace-pre-line text-ink-soft">{answer.text}</p>
+      <p className="leading-relaxed whitespace-pre-line text-lit-soft">{answer.text}</p>
     </div>
   )
 }
@@ -150,9 +150,9 @@ export default function QuestionCard({
       className={`panel overflow-hidden ${current ? 'animate-rise' : ''}`}
       aria-label={`Question ${question.order}`}
     >
-      <header className="border-b border-line bg-veil/60 px-5 py-4">
+      <header className="border-b border-seam bg-flat/60 px-5 py-4">
         <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <p className="flex items-center gap-2 font-mono text-eyebrow uppercase tracking-[0.14em] text-mist">
+          <p className="flex items-center gap-2 font-mono text-eyebrow uppercase tracking-[0.14em] text-shade">
             <AskIcon className="size-4" />
             Question {question.order}
             {total ? ` of ${total}` : ''}
@@ -162,13 +162,13 @@ export default function QuestionCard({
 
         {/* The question is the largest thing on the card. Everything else on this
             screen is scaffolding around reading it and answering it. */}
-        <h3 className="font-display text-lg font-bold leading-snug tracking-[-0.02em] text-ink">
+        <h3 className="font-display text-lg font-bold leading-snug tracking-[-0.02em] text-lit">
           {question.text}
         </h3>
 
         {/* Held back until it is answered: beforehand this is the answer key. */}
         {answer && question.focus && (
-          <p className="mt-2 font-mono text-eyebrow text-mist">Testing: {question.focus}</p>
+          <p className="mt-2 font-mono text-eyebrow text-shade">Testing: {question.focus}</p>
         )}
       </header>
 

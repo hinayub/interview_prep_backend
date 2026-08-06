@@ -28,8 +28,8 @@ export default function ResumeDropZone({ onFile, busy, selectedName }) {
         'rounded-xl border border-dashed p-8 text-center',
         'transition-[border-color,background-color,transform] duration-200',
         dragging
-          ? 'scale-[1.01] border-azure bg-azure-veil/50'
-          : 'border-line-strong bg-surface hover:border-azure/50 hover:bg-veil/40',
+          ? 'scale-[1.01] border-sodium bg-sodium-veil'
+          : 'border-seam-lit bg-riser hover:border-sodium/50 hover:bg-flat',
       ].join(' ')}
     >
       <input
@@ -45,16 +45,16 @@ export default function ResumeDropZone({ onFile, busy, selectedName }) {
       <span
         className={[
           'mx-auto flex size-11 items-center justify-center rounded-xl transition-colors duration-200',
-          dragging ? 'bg-azure text-white' : 'bg-veil text-azure',
+          dragging ? 'bg-sodium text-house shadow-lamp' : 'bg-flat text-sodium',
         ].join(' ')}
       >
         <DocumentIcon className="size-5" />
       </span>
 
-      <p className="mt-4 font-display text-lg font-bold tracking-[-0.02em] text-ink">
+      <p className="mt-4 font-display text-lg font-bold tracking-[-0.02em] text-lit">
         {selectedName ?? 'Drop your resume here'}
       </p>
-      <p className="mt-1.5 font-mono text-eyebrow text-mist">PDF or DOCX · up to 5 MB</p>
+      <p className="mt-1.5 font-mono text-eyebrow text-shade">PDF or DOCX · up to 5 MB</p>
 
       <button
         type="button"

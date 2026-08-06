@@ -20,22 +20,22 @@ const BANDS = [
     key: 'weak',
     max: 40,
     label: 'Needs work',
-    chip: 'border-flag/25 bg-flag/8 text-flag',
-    bar: 'bg-flag',
+    chip: 'border-tally/35 bg-tally/12 text-tally',
+    bar: 'bg-tally',
   },
   {
     key: 'partial',
     max: 70,
     label: 'Getting there',
-    chip: 'border-azure/25 bg-azure/8 text-azure',
-    bar: 'bg-azure',
+    chip: 'border-sodium/35 bg-sodium/12 text-sodium',
+    bar: 'bg-sodium',
   },
   {
     key: 'strong',
     max: 101,
     label: 'Strong',
-    chip: 'border-mint/25 bg-mint/8 text-mint',
-    bar: 'bg-mint',
+    chip: 'border-jade/35 bg-jade/12 text-jade',
+    bar: 'bg-jade',
   },
 ]
 
@@ -168,18 +168,18 @@ export function categoryBreakdown(session) {
 export const READINESS = {
   'not ready': {
     label: 'Not ready yet',
-    chip: 'border-flag/25 bg-flag/8 text-flag',
+    chip: 'border-tally/35 bg-tally/12 text-tally',
   },
   'nearly ready': {
     label: 'Nearly ready',
-    chip: 'border-azure/25 bg-azure/8 text-azure',
+    chip: 'border-sodium/35 bg-sodium/12 text-sodium',
   },
   ready: {
     label: 'Ready',
-    chip: 'border-mint/25 bg-mint/8 text-mint',
+    chip: 'border-jade/35 bg-jade/12 text-jade',
   },
 }
 
 export function readinessFor(value) {
-  return READINESS[value] ?? { label: value || 'Assessed', chip: 'border-line bg-canvas text-slate' }
+  return READINESS[value] ?? { label: value || 'Assessed', chip: 'border-seam bg-house text-dusk' }
 }

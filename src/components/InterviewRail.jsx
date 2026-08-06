@@ -1,3 +1,4 @@
+import ModelCredit from './ModelBadge'
 import { bandForAnswer } from '../lib/interview'
 
 /**
@@ -13,15 +14,17 @@ import { bandForAnswer } from '../lib/interview'
  */
 
 function markerStyles(question, isCurrent) {
-  if (isCurrent) return 'border-azure bg-azure text-white shadow-lift'
+  // The question being answered is the lit one, so its marker takes the lamp's
+  // own treatment: sodium fill, dark label, the light behind the number.
+  if (isCurrent) return 'border-sodium bg-sodium text-house shadow-lift'
 
   const evaluation = question.answer?.evaluation
   if (evaluation?.status === 'complete') {
     const band = bandForAnswer(evaluation.score ?? 0)
     return `${band.chip} border`
   }
-  if (question.answer) return 'border-line-strong bg-surface text-slate'
-  return 'border-line bg-canvas text-mist'
+  if (question.answer) return 'border-seam-lit bg-riser text-dusk'
+  return 'border-seam bg-house text-shade'
 }
 
 function markerLabel(question) {
@@ -31,7 +34,7 @@ function markerLabel(question) {
   return question.order
 }
 
-export default function InterviewRail({ questions = [], currentIndex, onJump }) {
+export default function InterviewRail({ questions = [], currentIndex, onJump, session }) {
   if (!questions.length) return null
 
   return (
@@ -72,9 +75,20 @@ export default function InterviewRail({ questions = [], currentIndex, onJump }) 
         })}
       </ol>
 
-      <p className="mt-4 font-mono text-eyebrow leading-relaxed text-mist">
+      <p className="mt-4 font-mono text-eyebrow leading-relaxed text-shade">
         Numbers are the score each answer got. Grey means not answered yet.
       </p>
+
+      {/* The questions have one author and the answers may each have another, so
+          the session's credit belongs here rather than repeated on every card. */}
+      {session?.model_used && (
+        <ModelCredit
+          model={session.model_used}
+          note={session.race_note}
+          prefix="Questions by"
+          className="mt-4 border-t border-seam pt-4"
+        />
+      )}
     </nav>
   )
 }

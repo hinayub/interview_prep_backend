@@ -41,8 +41,8 @@ const READY = {
   'GET /api/match-analyses/': { body: [] },
 }
 
-function renderPage() {
-  return renderWithStore(<MatchReport />, { auth: {}, route: '/app/match' })
+function renderPage({ route = '/app/match' } = {}) {
+  return renderWithStore(<MatchReport />, { auth: {}, route })
 }
 
 beforeEach(() => {
@@ -106,7 +106,7 @@ describe('MatchReport', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Run the match' }))
 
-    expect(await screen.findByText(/20 to 60 seconds/)).toBeInTheDocument()
+    expect(await screen.findByText(/both models at once/)).toBeInTheDocument()
     expect(screen.queryByRole('meter')).not.toBeInTheDocument()
     // A second run while one is in flight would leave two rows racing for the page.
     expect(screen.getByRole('button', { name: 'Analysing…' })).toBeDisabled()
@@ -130,9 +130,14 @@ describe('MatchReport', () => {
 
     expect(screen.getByText('Redis')).toBeInTheDocument()
     expect(screen.getByText('Kubernetes')).toBeInTheDocument()
-    // The counts have to come from the arrays, not from a hardcoded label.
-    expect(screen.getByText(/What you have/)).toHaveTextContent('3')
-    expect(screen.getByText(/What to close/)).toHaveTextContent('2')
+    // The counts have to come from the arrays, not from a hardcoded label. Asserted
+    // against the headings rather than a text node, so restyling the count inside one
+    // does not read as the count having gone missing.
+    expect(screen.getByRole('heading', { name: /What you have/ })).toHaveTextContent('3')
+    expect(screen.getByRole('heading', { name: /What to close/ })).toHaveTextContent('2')
+
+    // And the coverage rail states the ratio the two lists add up to.
+    expect(screen.getByText(/of 5 evidenced/)).toHaveTextContent('3')
   })
 
   it('polls a pending row until the agent finishes with it', async () => {
@@ -149,7 +154,7 @@ describe('MatchReport', () => {
     renderPage()
 
     await user.click(await screen.findByRole('button', { name: 'Run the match' }))
-    expect(await screen.findByText(/comparing your resume against the posting/)).toBeInTheDocument()
+    expect(await screen.findByText(/first one to answer is the score you get/)).toBeInTheDocument()
 
     // The interval is 2s; this is the one test that pays for it, because polling
     // silently stopping would leave every candidate staring at "Reading…".
@@ -216,5 +221,95 @@ describe('MatchReport', () => {
 
     expect(await screen.findByText('76')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Run it again' })).toBeInTheDocument()
+  })
+
+  /**
+   * Arriving from a record in the history rail.
+   *
+   * Newer documents than the record's are on file throughout, because otherwise
+   * "honoured the URL" and "showed the newest of everything" assert the same thing.
+   */
+  describe('opened from a history record', () => {
+    const NEWER_RESUME = { id: 9, filename: 'cv-v2.pdf', parsed_text: 'Go, gRPC.' }
+    const NEWER_ROLE = { id: 4, title: 'Platform Engineer', company: '' }
+
+    const LATER = {
+      ...READY,
+      'GET /api/resumes/': { body: [NEWER_RESUME, RESUME] },
+      'GET /api/job-descriptions/': { body: [NEWER_ROLE, ROLE] },
+      'GET /api/match-analyses/': { body: [COMPLETE] },
+      'GET /api/match-analyses/11/': { body: COMPLETE },
+    }
+
+    const panel = async () =>
+      (await screen.findByText('What will be compared')).closest('section')
+
+    it('shows the documents a named analysis was run against', async () => {
+      stubFetch(LATER)
+      renderPage({ route: '/app/match?analysis=11' })
+
+      expect(await panel()).toHaveTextContent('cv.pdf')
+      expect(await panel()).toHaveTextContent('Backend Engineer')
+      expect(await panel()).not.toHaveTextContent('cv-v2.pdf')
+      expect(await screen.findByText('76')).toBeInTheDocument()
+    })
+
+    it('re-runs the pair it opened, not the newest documents on file', async () => {
+      // The point of opening an old record and pressing the button is to score the
+      // same application again. Quietly swapping in a CV uploaded since would make
+      // the movement it reports meaningless.
+      const fetchMock = stubFetch({
+        ...LATER,
+        'POST /api/match-analyses/': { status: 201, body: PENDING },
+      })
+      const user = userEvent.setup()
+      renderPage({ route: '/app/match?analysis=11' })
+
+      await user.click(await screen.findByRole('button', { name: 'Run it again' }))
+
+      await waitFor(() => expect(fetchMock.lastOf('POST')).toBeDefined())
+      await expect(fetchMock.lastOf('POST').json()).resolves.toEqual({
+        resume: 7,
+        job_description: 3,
+      })
+    })
+
+    it('runs a pair that has never been scored', async () => {
+      const fetchMock = stubFetch({
+        ...LATER,
+        'GET /api/match-analyses/': { body: [] },
+        'POST /api/match-analyses/': { status: 201, body: PENDING },
+        'GET /api/match-analyses/11/': { body: PENDING },
+      })
+      const user = userEvent.setup()
+      renderPage({ route: '/app/match?resume=7&role=3' })
+
+      await user.click(await screen.findByRole('button', { name: 'Run the match' }))
+
+      await waitFor(() => expect(fetchMock.lastOf('POST')).toBeDefined())
+      await expect(fetchMock.lastOf('POST').json()).resolves.toEqual({
+        resume: 7,
+        job_description: 3,
+      })
+    })
+
+    it('falls back to the newest documents when the URL asks for nothing', async () => {
+      stubFetch(LATER)
+      renderPage()
+
+      expect(await panel()).toHaveTextContent('cv-v2.pdf')
+      expect(await panel()).toHaveTextContent('Platform Engineer')
+    })
+
+    it('falls back rather than 404ing on a link to a run that is gone', async () => {
+      // A bookmark from before the row was deleted. Trusting the id would poll a
+      // URL that can only ever 404 and render the server's message as if the page
+      // itself were broken.
+      stubFetch(LATER)
+      renderPage({ route: '/app/match?analysis=9999' })
+
+      expect(await screen.findByText('76')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
   })
 })

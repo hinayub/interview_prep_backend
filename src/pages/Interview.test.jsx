@@ -81,8 +81,8 @@ const READY = {
   'GET /api/interviews/': { body: [] },
 }
 
-function renderPage() {
-  return renderWithStore(<Interview />, { auth: {}, route: '/app/interview' })
+function renderPage({ route = '/app/interview' } = {}) {
+  return renderWithStore(<Interview />, { auth: {}, route })
 }
 
 beforeEach(() => {
@@ -691,5 +691,107 @@ describe('Interview', () => {
     const rail = await screen.findByRole('navigation', { name: 'Interview progress' })
     expect(within(rail).getByRole('button', { name: 'Question 1' })).toHaveTextContent('74')
     expect(within(rail).getByRole('button', { name: 'Question 2' })).toHaveTextContent('41')
+  })
+
+  /**
+   * Arriving from a record in the history rail.
+   *
+   * The fixtures put a newer CV and a newer posting on file than the ones the record
+   * names, because "the page honoured the URL" and "the page showed the newest of
+   * everything" are otherwise the same assertion.
+   */
+  describe('opened from a history record', () => {
+    const NEWER_CV = { id: 9, filename: 'cv-v2.pdf', parsed_text: 'Go, gRPC.' }
+    const NEWER_ROLE = { id: 4, title: 'Platform Engineer', company: '' }
+
+    const LATER = {
+      ...READY,
+      'GET /api/resumes/': { body: [NEWER_CV, RESUME] },
+      'GET /api/job-descriptions/': { body: [NEWER_ROLE, ROLE] },
+    }
+
+    const panel = async () =>
+      (await screen.findByText('What the questions will be written from')).closest('section')
+
+    it('names the newest documents when the URL asks for nothing', async () => {
+      stubFetch(LATER)
+      renderPage()
+
+      expect(await panel()).toHaveTextContent('cv-v2.pdf')
+      expect(await panel()).toHaveTextContent('Platform Engineer')
+    })
+
+    it('shows the documents a named session was sat against', async () => {
+      stubFetch({
+        ...LATER,
+        'GET /api/interviews/': { body: [OPEN] },
+        'GET /api/interviews/11/': { body: OPEN },
+      })
+      renderPage({ route: '/app/interview?session=11' })
+
+      expect(await panel()).toHaveTextContent('cv.pdf')
+      expect(await panel()).toHaveTextContent('Backend Engineer')
+      expect(await panel()).not.toHaveTextContent('cv-v2.pdf')
+      // And the interview itself is the one that was asked for.
+      expect(screen.getByText(/migrated a monolith to Celery/)).toBeInTheDocument()
+    })
+
+    it('starts a fresh interview against the pair named in the URL', async () => {
+      const fetchMock = stubFetch({
+        ...LATER,
+        'POST /api/interviews/': { status: 201, body: GENERATING },
+        'GET /api/interviews/11/': { body: GENERATING },
+      })
+      const user = userEvent.setup()
+      renderPage({ route: '/app/interview?resume=7&role=3' })
+
+      await user.click(await screen.findByRole('button', { name: 'Start the interview' }))
+
+      await waitFor(() => expect(fetchMock.lastOf('POST')).toBeDefined())
+      // The older pair, not the two documents at the top of the lists.
+      await expect(fetchMock.lastOf('POST').json()).resolves.toEqual({
+        resume: 7,
+        job_description: 3,
+        match_analysis: 5,
+      })
+    })
+
+    it('targets the gaps of the pair on screen rather than the newest analysis', async () => {
+      stubFetch({
+        ...LATER,
+        'GET /api/match-analyses/': {
+          body: [
+            { id: 7, status: 'complete', resume: 9, job_description: 4, missing_skills: ['Terraform', 'Nomad', 'Consul'] },
+            { id: 6, status: 'complete', resume: 7, job_description: 3, missing_skills: ['Kafka'] },
+          ],
+        },
+      })
+      renderPage({ route: '/app/interview?resume=7&role=3' })
+
+      expect(await screen.findByText('1 gap will be probed')).toBeInTheDocument()
+    })
+
+    it('ignores a param that is not an id', async () => {
+      // A hand-edited or truncated URL falls back to the funnel's default rather
+      // than rendering an empty page.
+      stubFetch(LATER)
+      renderPage({ route: '/app/interview?session=not-an-id' })
+
+      expect(await panel()).toHaveTextContent('cv-v2.pdf')
+    })
+
+    it('falls back rather than 404ing on a link to a session that is gone', async () => {
+      stubFetch({
+        ...LATER,
+        'GET /api/interviews/': { body: [OPEN] },
+        'GET /api/interviews/11/': { body: OPEN },
+      })
+      renderPage({ route: '/app/interview?session=9999' })
+
+      // The newest interview, and no error: an id we cannot account for is not
+      // something to poll.
+      expect(await screen.findByText(/migrated a monolith to Celery/)).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
   })
 })

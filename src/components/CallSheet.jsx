@@ -19,11 +19,11 @@ export default function CallSheet({ cues }) {
             {index < cues.length - 1 && (
               <span
                 aria-hidden="true"
-                className="absolute top-4 left-[4.5px] h-full w-px bg-line"
+                className="absolute top-4 left-[4.5px] h-full w-px bg-seam"
               />
             )}
 
-            <span className="relative z-10 mt-1.5 bg-surface">
+            <span className="relative z-10 mt-1.5 bg-riser">
               <CueLamp state={cue.state} pulse={cue.state === 'live'} />
             </span>
 
@@ -31,13 +31,13 @@ export default function CallSheet({ cues }) {
               <p
                 className={[
                   'font-display text-sm font-semibold leading-tight tracking-[-0.01em]',
-                  cue.state === 'dark' ? 'text-mist' : 'text-ink',
+                  cue.state === 'dark' ? 'text-shade' : 'text-lit',
                 ].join(' ')}
               >
                 {cue.label}
               </p>
               {cue.detail && (
-                <p className="mt-1 font-mono text-eyebrow break-words text-slate">{cue.detail}</p>
+                <p className="mt-1 font-mono text-eyebrow break-words text-dusk">{cue.detail}</p>
               )}
             </div>
           </li>

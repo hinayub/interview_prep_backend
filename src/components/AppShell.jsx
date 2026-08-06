@@ -1,7 +1,7 @@
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 
-import { ROLE_DRAFT, clearDraft } from '../lib/draft'
+import { clearWorkspace } from '../lib/draft'
 import { loggedOut, selectCandidate } from '../store/authSlice'
 import { apiSlice } from '../store/apiSlice'
 import { CortexMark } from './icons'
@@ -15,25 +15,26 @@ export default function AppShell() {
     dispatch(loggedOut())
     // Cached server data belongs to the previous session; drop it so the next
     // person to sign in on this machine cannot read it out of the store. The
-    // unsent role draft is theirs too — leaving it behind would show a stranger
-    // the job they were applying for.
+    // bench is theirs too — leaving the posting they typed, or the pair they were
+    // working against, would show a stranger the job they were applying for and
+    // hand the next sign-in a half-finished application instead of a clean one.
     dispatch(apiSlice.util.resetApiState())
-    clearDraft(ROLE_DRAFT)
+    clearWorkspace()
     navigate('/', { replace: true })
   }
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-seam bg-house/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <Link to="/" className="group flex items-center gap-2.5 rounded-lg" aria-label="Cortex home">
-            <CortexMark className="size-6 text-azure transition-transform duration-500 group-hover:rotate-[8deg]" />
+            <CortexMark className="size-6 text-sodium transition-transform duration-500 group-hover:rotate-[8deg]" />
             <span className="font-display text-base font-extrabold tracking-[-0.02em]">Cortex</span>
           </Link>
 
           <div className="flex items-center gap-4">
             {candidate?.username && (
-              <span className="hidden font-mono text-eyebrow text-mist sm:inline">
+              <span className="hidden font-mono text-eyebrow text-shade sm:inline">
                 {candidate.username}
               </span>
             )}

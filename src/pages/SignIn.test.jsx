@@ -67,9 +67,34 @@ describe('SignIn', () => {
     renderPage()
 
     await signIn(user)
-
     await waitFor(() => expect(localStorage.getItem('greenroom.auth')).toBeTruthy())
-    expect(JSON.parse(localStorage.getItem('greenroom.auth'))).toMatchObject(TOKENS)
+
+    // Asserted by reloading rather than by reading the stored blob. authSlice reads
+    // localStorage once, at module load, so re-importing it *is* the reload — and it
+    // is the only thing that proves what was written can be read back. Asserting on
+    // the blob's keys would only check that the slice agrees with itself, which it
+    // always does: it writes `token` and the login response carries `access`, so a
+    // test comparing the two shapes fails while the session works perfectly.
+    vi.resetModules()
+    const { default: authReducer, selectIsAuthenticated } = await import('../store/authSlice')
+    const rehydrated = authReducer(undefined, { type: '@@INIT' })
+
+    expect(selectIsAuthenticated({ auth: rehydrated })).toBe(true)
+    expect(rehydrated.token).toBe('access-token')
+    // Without this the 401 retry in apiSlice has nothing to re-up with, and the
+    // reloaded session dies at the first expiry instead of lasting the week.
+    expect(rehydrated.refresh).toBe('refresh-token')
+  })
+
+  it('comes up signed out when nothing was persisted', async () => {
+    // The other half of the same mechanism: a first visit, and the logged-out state
+    // after loggedOut() removes the key, must not rehydrate into a phantom session.
+    vi.resetModules()
+    const { default: authReducer, selectIsAuthenticated } = await import('../store/authSlice')
+    const fresh = authReducer(undefined, { type: '@@INIT' })
+
+    expect(selectIsAuthenticated({ auth: fresh })).toBe(false)
+    expect(fresh.token).toBeNull()
   })
 
   it('posts the credentials as JSON', async () => {

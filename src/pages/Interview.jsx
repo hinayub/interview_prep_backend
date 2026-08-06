@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import CallSheet from '../components/CallSheet'
 import CueLamp from '../components/CueLamp'
@@ -9,6 +9,7 @@ import QuestionCard from '../components/QuestionCard'
 import ReportCard from '../components/ReportCard'
 import { ArrowIcon, DocumentIcon, TargetIcon } from '../components/icons'
 import { buildCues } from '../lib/cues'
+import { EMPTY_PAIR, PAIR_DRAFT, readDraft } from '../lib/draft'
 import { errorMessage } from '../lib/errors'
 import {
   failedScores,
@@ -17,6 +18,7 @@ import {
   isReadyForReport,
   runningAverage,
 } from '../lib/interview'
+import { readTarget, uploadLink } from '../lib/links'
 import {
   useBuildReportMutation,
   useInterview,
@@ -40,8 +42,15 @@ import { useListResumesQuery } from '../store/api/resumesApi'
  * One question is on screen at a time, and it is the first unanswered one. Showing
  * all eight at once would let a candidate read question six while answering question
  * one, which is not what the interview they are rehearsing for will do.
+ *
+ * Which session that is defaults to the newest, and a record opened from the history
+ * rail names one in the query string instead (see lib/links.js) — that is what makes
+ * "Interview 2" of a pair openable rather than only ever the last one sat.
  */
 export default function Interview() {
+  const [searchParams] = useSearchParams()
+  const target = readTarget(searchParams, 'session')
+
   const { data: resumes = [], isLoading: loadingResumes } = useListResumesQuery()
   const { data: roles = [], isLoading: loadingRoles } = useListJobDescriptionsQuery()
   const { data: analyses = [] } = useListMatchAnalysesQuery()
@@ -57,12 +66,52 @@ export default function Interview() {
   // "wherever the interview actually is", which is the normal case.
   const [reviewIndex, setReviewIndex] = useState(null)
 
-  const resume = resumes[0] ?? null
-  const role = roles[0] ?? null
-  // The newest completed analysis, whose gaps the questions will target.
-  const analysis = analyses.find((row) => row.status === 'complete') ?? null
+  /**
+   * The session the URL asked for, but only if the candidate actually has it.
+   *
+   * Resolved through the list rather than trusted, so a stale bookmark or a deleted
+   * session falls back to the newest interview instead of being polled forever and
+   * rendering the server's 404 as a broken page.
+   */
+  const requested = sessions.find((row) => row.id === target.rowId) ?? null
 
-  const sessionId = watchedId ?? sessions[0]?.id ?? null
+  // watchedId first: a session we just started is not in the list yet.
+  const sessionId = watchedId ?? requested?.id ?? sessions[0]?.id ?? null
+
+  // The application this tab is working on, for when the URL names nothing. Read
+  // once: it does not change while this page is open.
+  const bench = useMemo(() => ({ ...EMPTY_PAIR, ...readDraft(PAIR_DRAFT) }), [])
+
+  // Which two documents the panel names and the next run will use. A pair in the URL
+  // wins; then the pair the requested session was sat against, so a record opened
+  // from history offers another interview on *that* application rather than on
+  // whatever was uploaded since; then the pair on the bench; then the newest of each.
+  const resume =
+    resumes.find(
+      (row) => row.id === (target.resumeId ?? requested?.resume ?? bench.resumeId)
+    ) ??
+    resumes[0] ??
+    null
+  const role =
+    roles.find(
+      (row) => row.id === (target.roleId ?? requested?.job_description ?? bench.roleId)
+    ) ??
+    roles[0] ??
+    null
+
+  // The completed analysis whose gaps the questions will target: this pair's own if
+  // it has one, otherwise the newest on file. Preferring the pair's own is what stops
+  // a record's questions being aimed at the gaps of an unrelated application.
+  const analysis =
+    analyses.find(
+      (row) =>
+        row.status === 'complete' &&
+        row.resume === resume?.id &&
+        row.job_description === role?.id
+    ) ??
+    analyses.find((row) => row.status === 'complete') ??
+    null
+
   const polled = useInterview(sessionId)
   const session = polled.data ?? sessions.find((row) => row.id === sessionId) ?? null
 
@@ -169,7 +218,7 @@ export default function Interview() {
         <h1 className="mt-3 font-display text-3xl font-extrabold tracking-[-0.04em] sm:text-4xl">
           Sit the interview, then read what it cost you
         </h1>
-        <p className="mt-4 leading-relaxed text-slate">
+        <p className="mt-4 leading-relaxed text-dusk">
           Eight questions written from your CV and this posting — including the gaps the
           match found, because a real interviewer will ask about those too. One question at
           a time, no going back, and a score on every answer.
@@ -183,11 +232,14 @@ export default function Interview() {
               <h2 className="font-display text-base font-bold tracking-[-0.01em]">
                 There is no interview to sit yet
               </h2>
-              <p className="mt-2 leading-relaxed text-slate">
+              <p className="mt-2 leading-relaxed text-dusk">
                 The questions are written from your CV and the posting, so both have to
                 exist first.
               </p>
-              <Link to="/app" className="btn-ink group mt-5 text-sm">
+              <Link
+                to={uploadLink({ resumeId: resume?.id, roleId: role?.id })}
+                className="btn-lamp group mt-5 text-sm"
+              >
                 Back to step 1
                 <ArrowIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
@@ -199,14 +251,14 @@ export default function Interview() {
               <h2 className="sr-only">What the questions will be written from</h2>
 
               <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
-                <dl className="grid min-w-0 flex-1 gap-5 sm:grid-cols-2 sm:divide-x sm:divide-line">
+                <dl className="grid min-w-0 flex-1 gap-5 sm:grid-cols-2 sm:divide-x sm:divide-seam">
                   <div className="min-w-0 sm:pr-6">
                     <dt className="eyebrow mb-1.5 flex items-center gap-1.5">
-                      <DocumentIcon className="size-3.5 text-mist" />
+                      <DocumentIcon className="size-3.5 text-shade" />
                       Your resume
                     </dt>
-                    <dd className="truncate text-sm text-ink-soft">{resume.filename}</dd>
-                    <dd className="mt-0.5 font-mono text-eyebrow text-mist">
+                    <dd className="truncate text-sm text-lit-soft">{resume.filename}</dd>
+                    <dd className="mt-0.5 font-mono text-eyebrow text-shade">
                       {analysis
                         ? `${analysis.missing_skills.length} gap${analysis.missing_skills.length === 1 ? '' : 's'} will be probed`
                         : 'No match run — questions from the documents alone'}
@@ -215,11 +267,11 @@ export default function Interview() {
 
                   <div className="min-w-0 sm:pl-6">
                     <dt className="eyebrow mb-1.5 flex items-center gap-1.5">
-                      <TargetIcon className="size-3.5 text-mist" />
+                      <TargetIcon className="size-3.5 text-shade" />
                       The role
                     </dt>
-                    <dd className="truncate text-sm text-ink-soft">{role.title}</dd>
-                    <dd className="mt-0.5 truncate font-mono text-eyebrow text-mist">
+                    <dd className="truncate text-sm text-lit-soft">{role.title}</dd>
+                    <dd className="mt-0.5 truncate font-mono text-eyebrow text-shade">
                       {role.company || 'No company given'}
                     </dd>
                   </div>
@@ -229,7 +281,7 @@ export default function Interview() {
                   type="button"
                   onClick={handleStart}
                   disabled={starting.isLoading || generating}
-                  className="btn-ink shrink-0 text-sm"
+                  className="btn-lamp shrink-0 text-sm"
                 >
                   {starting.isLoading || generating
                     ? 'Writing questions…'
@@ -250,23 +302,24 @@ export default function Interview() {
 
           {generating && (
             <section className="panel overflow-hidden" aria-busy="true">
-              <header className="flex items-center gap-2 border-b border-line bg-veil/60 px-5 py-4">
+              <header className="flex items-center gap-2 border-b border-seam bg-flat/60 px-5 py-4">
                 <CueLamp state="live" pulse />
-                <span className="eyebrow text-azure">Writing your questions</span>
+                <span className="eyebrow text-sodium">Writing your questions</span>
               </header>
 
               <div className="px-5 py-6">
-                <div className="relative h-2 overflow-hidden rounded-full bg-veil">
+                <div className="relative h-2 overflow-hidden rounded-full bg-seam">
                   <span
                     aria-hidden="true"
-                    className="animate-sweep absolute top-1/2 size-2 -translate-y-1/2 rounded-full bg-azure"
+                    className="animate-sweep absolute top-1/2 size-2 -translate-y-1/2 rounded-full bg-sodium"
                   />
                 </div>
 
-                <p className="mt-6 text-sm leading-relaxed text-slate" role="status">
+                <p className="mt-6 text-sm leading-relaxed text-dusk" role="status">
                   Your CV and the posting are being read to write questions specific to
-                  this application. This runs on a local model, so it usually takes 30 to
-                  90 seconds. You can leave this page open.
+                  this application. The local model writes these, with the hosted one
+                  standing by, so it usually takes 30 to 90 seconds. You can leave this
+                  page open.
                 </p>
               </div>
             </section>
@@ -274,11 +327,11 @@ export default function Interview() {
 
           {session?.status === 'failed' && (
             <section className="panel overflow-hidden">
-              <header className="border-b border-line bg-veil/60 px-5 py-4">
-                <span className="eyebrow text-flag">Stopped</span>
+              <header className="border-b border-seam bg-flat/60 px-5 py-4">
+                <span className="eyebrow text-tally">Stopped</span>
               </header>
               <div className="space-y-4 px-5 py-5">
-                <p role="alert" className="text-sm leading-relaxed text-ink-soft">
+                <p role="alert" className="text-sm leading-relaxed text-lit-soft">
                   {session.error_message || 'The agent stopped before writing any questions.'}
                 </p>
                 {ready && (
@@ -294,7 +347,7 @@ export default function Interview() {
             <>
               {reviewIndex !== null && (
                 <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-                  <p className="text-sm text-slate">
+                  <p className="text-sm text-dusk">
                     Looking back at an answer you already gave.
                   </p>
                   <button
@@ -328,7 +381,7 @@ export default function Interview() {
                   ? 'None of your answers could be scored'
                   : `${unscored.length} of your ${questions.length} answers could not be scored`}
               </h2>
-              <p className="mt-2 leading-relaxed text-slate">
+              <p className="mt-2 leading-relaxed text-dusk">
                 Your answers are saved. This is almost always a configuration problem rather
                 than anything you wrote — the reason is under the answer itself — so it is
                 worth fixing and trying again.
@@ -338,7 +391,7 @@ export default function Interview() {
                 type="button"
                 onClick={handleRescore}
                 disabled={rescoreRun.isLoading}
-                className="btn-ink mt-5 text-sm"
+                className="btn-lamp mt-5 text-sm"
               >
                 {rescoreRun.isLoading
                   ? 'Starting…'
@@ -356,7 +409,7 @@ export default function Interview() {
               <h2 className="font-display text-base font-bold tracking-[-0.01em]">
                 That is all {questions.length} answered
               </h2>
-              <p className="mt-2 leading-relaxed text-slate">
+              <p className="mt-2 leading-relaxed text-dusk">
                 {unscored.length === questions.length
                   ? 'A debrief has to have at least one scored answer to read, so it will be written once the scores above go through.'
                   : !readyForReport
@@ -372,7 +425,7 @@ export default function Interview() {
                   type="button"
                   onClick={handleReport}
                   disabled={reportRun.isLoading}
-                  className="btn-ink mt-5 text-sm"
+                  className="btn-lamp mt-5 text-sm"
                 >
                   {reportRun.isLoading
                     ? 'Starting…'
@@ -383,7 +436,7 @@ export default function Interview() {
               )}
 
               {session.report?.is_stale && (
-                <p className="mt-3 text-sm leading-relaxed text-mist">
+                <p className="mt-3 text-sm leading-relaxed text-shade">
                   More of your answers have been scored since this debrief was written, so it
                   is out of date.
                 </p>
@@ -406,6 +459,7 @@ export default function Interview() {
               questions={questions}
               currentIndex={shownIndex}
               onJump={setReviewIndex}
+              session={session}
             />
           )}
 
@@ -414,9 +468,9 @@ export default function Interview() {
               <h2 className="eyebrow mb-2">Running average</h2>
               <p className="font-display text-2xl font-extrabold tracking-[-0.03em] tabular-nums">
                 {average}
-                <span className="ml-0.5 font-sans text-sm font-medium text-mist">/100</span>
+                <span className="ml-0.5 font-sans text-sm font-medium text-shade">/100</span>
               </p>
-              <p className="mt-1.5 font-mono text-eyebrow leading-relaxed text-mist">
+              <p className="mt-1.5 font-mono text-eyebrow leading-relaxed text-shade">
                 Across the answers scored so far. The debrief may land somewhere else — it
                 reads them together.
               </p>
@@ -425,7 +479,7 @@ export default function Interview() {
 
           <CallSheet cues={cues} />
 
-          <p className="px-1 text-sm leading-relaxed text-mist">
+          <p className="px-1 text-sm leading-relaxed text-shade">
             Every interview is kept, so you can sit another one after working on the gaps
             and compare.
           </p>

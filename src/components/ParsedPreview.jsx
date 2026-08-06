@@ -17,27 +17,27 @@ export default function ParsedPreview({ text, filename }) {
 
   return (
     <section className="panel overflow-hidden">
-      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line bg-veil/60 px-4 py-3">
-        <h3 className="eyebrow text-mint">What we read</h3>
-        <p className="font-mono text-eyebrow text-mist">
+      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-seam bg-flat/60 px-4 py-3">
+        <h3 className="eyebrow text-jade">What we read</h3>
+        <p className="font-mono text-eyebrow text-shade">
           {filename} · {words.toLocaleString()} words · {text.length.toLocaleString()} chars
         </p>
       </header>
 
       <pre
         className={[
-          'overflow-x-auto px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-slate',
+          'overflow-x-auto px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-dusk',
           expanded ? '' : 'max-h-44 overflow-y-hidden',
         ].join(' ')}
       >
         {text}
       </pre>
 
-      <footer className="border-t border-line px-4 py-2.5">
+      <footer className="border-t border-seam px-4 py-2.5">
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className="font-mono text-eyebrow tracking-[0.14em] text-slate uppercase transition-colors hover:text-azure"
+          className="font-mono text-eyebrow tracking-[0.14em] text-dusk uppercase transition-colors hover:text-sodium"
         >
           {expanded ? 'Collapse' : 'Show all text'}
         </button>

@@ -63,15 +63,6 @@ export function ChartIcon({ className = 'size-5' }) {
   )
 }
 
-export function SparkIcon({ className = 'size-3.5' }) {
-  return (
-    <svg {...base} className={className} strokeWidth={1.4}>
-      <path d="M12 3.5 13.4 9 19 10.5 13.4 12 12 17.5 10.6 12 5 10.5 10.6 9z" />
-      <path d="M18.5 16.5l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z" />
-    </svg>
-  )
-}
-
 export function ArrowIcon({ className = 'size-4' }) {
   return (
     <svg {...base} className={className} strokeWidth={1.8}>
@@ -85,6 +76,24 @@ export function CheckIcon({ className = 'size-3.5' }) {
   return (
     <svg {...base} className={className} strokeWidth={2.2}>
       <path d="M5 12.5l4.5 4.5L19 7" />
+    </svg>
+  )
+}
+
+/** Starting something that does not exist yet. Used on "new application". */
+export function PlusIcon({ className = 'size-4' }) {
+  return (
+    <svg {...base} className={className} strokeWidth={2}>
+      <path d="M12 5.5v13M5.5 12h13" />
+    </svg>
+  )
+}
+
+/** The disclosure marker on a dropdown. Rotated by the caller when it is open. */
+export function ChevronIcon({ className = 'size-3.5' }) {
+  return (
+    <svg {...base} className={className} strokeWidth={2}>
+      <path d="M6 9.5 12 15.5l6-6" />
     </svg>
   )
 }

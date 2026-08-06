@@ -3,49 +3,63 @@
 /* ---------------------------------------------------------------------------
    Cortex — practise the interview before it happens.
 
-   The palette is a lit room, not a dim one: a cool blue wash over white paper,
-   deep navy for anything you read, and one electric azure reserved for the
-   thing the product actually does (score, measure, mark progress). Navy fills
-   the single primary action on a screen; azure marks measurement. Nothing else
-   is allowed to be saturated, so "what do I do next" and "how did I do" never
-   compete for the same attention.
+   The room, not the page. This product's own vocabulary is a studio's: a call
+   sheet, a cue lamp, a rail, a stage, a debrief, sitting an interview. So the
+   surface is the green room ten minutes before you go on — house lights down,
+   warm dark walls, and one sodium key light falling on whatever you are meant
+   to be looking at.
+
+   That gives the palette a single rule. Sodium is light: it marks what Cortex
+   is doing and what it measured, and it fills the one primary action on a
+   screen, because the lit thing is the thing you step towards. Jade confirms
+   what is on file. Tally red is only ever a stop. Everything else is the room,
+   and the room is never saturated.
 --------------------------------------------------------------------------- */
 
 @theme {
-  /* Surfaces, lightest to most structural. */
-  --color-canvas: #f5f9fe;
-  --color-surface: #ffffff;
-  --color-veil: #edf3fc;
-  --color-line: #e1e9f5;
-  --color-line-strong: #bed2ec;
+  /* The room, darkest to most raised. Warm — plum and ash, never neutral grey,
+     so the dark reads as a lit space rather than an absence of light. */
+  --color-house: #151019;
+  --color-riser: #1d1622;
+  --color-flat: #271e2d;
+  --color-seam: #362b3d;
+  --color-seam-lit: #4e4055;
 
-  /* Ink, darkest to faintest. */
-  --color-ink: #0b2350;
-  --color-ink-soft: #35496d;
-  --color-slate: #5f7391;
-  --color-mist: #92a4be;
+  /* The lit face, brightest to faintest. All four clear 4.5:1 on the riser. */
+  --color-lit: #f7f0ea;
+  --color-lit-soft: #dcd0da;
+  --color-dusk: #b7a8b6;
+  --color-shade: #948a9c;
 
-  /* Accents. Azure measures, mint confirms, flag stops. */
-  --color-azure: #1f63d6;
-  --color-azure-lift: #5896f4;
-  --color-azure-veil: #dce9fb;
-  --color-mint: #0e9b74;
-  --color-flag: #d0433d;
+  /* Sodium is the key light. Jade is on file. Tally is a stop. */
+  --color-sodium: #ffae3b;
+  --color-sodium-hi: #ffd48a;
+  --color-sodium-veil: #2e2012;
+  --color-jade: #41c99b;
+  --color-tally: #ff4a3d;
 
-  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
 
   --text-eyebrow: 0.6875rem;
 
-  --shadow-card: 0 1px 2px rgba(11, 35, 80, 0.04), 0 8px 24px -12px rgba(11, 35, 80, 0.1);
-  --shadow-lift: 0 2px 4px rgba(11, 35, 80, 0.05), 0 18px 40px -16px rgba(31, 99, 214, 0.24);
+  /* On a dark surface a drop shadow does almost nothing, so a card is separated
+     by a hairline of light along its top edge instead — the way a raised object
+     catches the light above it. The cast shadow only sets it off the wall. */
+  --shadow-card:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.045), 0 14px 30px -20px rgba(0, 0, 0, 0.9);
+  --shadow-lift:
+    inset 0 1px 0 0 rgba(255, 214, 150, 0.1), 0 0 0 1px rgba(255, 174, 59, 0.16),
+    0 20px 44px -20px rgba(255, 140, 40, 0.3);
+  --shadow-lamp: 0 0 0 3px rgba(255, 174, 59, 0.12), 0 0 14px 2px rgba(255, 174, 59, 0.5);
 
   --animate-rise: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-drift: drift 24s ease-in-out infinite alternate;
   --animate-drift-slow: drift 38s ease-in-out infinite alternate-reverse;
   --animate-breathe: breathe 5s ease-in-out infinite;
   --animate-sweep: sweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-filament: filament 4s ease-in-out infinite;
 }
 
 /* Ambient and entrance motion. Declared at the top level so the keyframes are
@@ -73,10 +87,22 @@
 @keyframes breathe {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.5;
   }
   50% {
     opacity: 1;
+  }
+}
+
+/* A tungsten lamp does not blink, it settles — the glow swells and falls a
+   little while the agent is working. */
+@keyframes filament {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(255, 174, 59, 0.1), 0 0 8px 1px rgba(255, 174, 59, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 174, 59, 0.14), 0 0 18px 3px rgba(255, 174, 59, 0.65);
   }
 }
 
@@ -97,23 +123,33 @@
 }
 
 @layer base {
-  body {
-    @apply bg-canvas text-ink font-sans antialiased;
+  /* Native controls, scrollbars and the space past the scroll edge all belong to
+     the same room; without this they arrive white. */
+  html {
+    color-scheme: dark;
+    background-color: var(--color-house);
   }
 
-  /* Every interactive element gets a visible focus ring; azure is the one colour
-     guaranteed to read against every surface in the palette. */
+  body {
+    @apply bg-house text-lit font-sans antialiased;
+  }
+
+  /* Every interactive element gets a visible focus ring. Sodium is the one
+     colour guaranteed to read against every surface in the room. */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-azure;
+    @apply outline-2 outline-offset-2 outline-sodium;
   }
 
   ::selection {
-    @apply bg-azure text-white;
+    @apply bg-sodium text-house;
   }
 
   /* Scroll-reveal. Elements start displaced and settle when they enter view;
      the hook flips data-reveal to "shown". Anything that never gets observed
-     (no IntersectionObserver, no JS) is made visible by the fallbacks below. */
+     (no IntersectionObserver, no JS) is made visible by the fallbacks below.
+
+     Never put content a candidate came to read behind one of these — a reveal
+     that is never observed is content that is never shown. */
   [data-reveal] {
     opacity: 0;
     transform: translateY(1.5rem);
@@ -152,63 +188,107 @@
    Declared with @utility, not as a .class in @layer components: Tailwind v4 can
    only @apply real utilities, so a plain class here would break .field-label. */
 @utility eyebrow {
-  @apply font-mono text-eyebrow uppercase tracking-[0.18em] text-mist;
+  @apply font-mono text-eyebrow uppercase tracking-[0.18em] text-shade;
+}
+
+/* Bricolage Grotesque carries a width axis. Narrowing it slightly is what makes
+   a headline read as a poster rather than as large body copy, so it is reserved
+   for the two places that are meant to be posters: the hero and the auth stage. */
+@utility poster {
+  font-variation-settings: 'wdth' 88;
 }
 
 @layer components {
   .field-label {
-    @apply eyebrow block mb-2 text-slate;
+    @apply eyebrow block mb-2 text-dusk;
   }
 
-  /* A hairline on white is not enough to read as an input, so the resting state
-     carries a tint as well as a border and the field brightens to plain white on
-     focus. The fill is what makes the target obvious; the ring confirms focus. */
+  /* An input in a dark room has to look like a recess, not a raised card: it is
+     darker than the surface around it, and focus is what brings the light to it
+     — the fill lifts and a sodium ring confirms where the cursor went. */
   .field-input {
-    @apply w-full rounded-lg border border-line-strong bg-veil/70 px-3.5 py-2.5
-           text-ink placeholder:text-mist
+    @apply w-full rounded-lg border border-seam-lit bg-house/70 px-3.5 py-2.5
+           text-lit placeholder:text-shade
            transition-[border-color,background-color,box-shadow] duration-150
-           focus:border-azure focus:bg-surface focus:outline-none focus:ring-4 focus:ring-azure/12
+           focus:border-sodium focus:bg-house focus:outline-none focus:ring-4 focus:ring-sodium/15
            disabled:opacity-50;
   }
 
-  /* Navy fills the one primary action on a screen. */
-  .btn-ink {
+  /* The lamp: the one primary action on a screen, and the only thing on it that
+     is fully lit. Dark text on sodium, because the light is behind the label. */
+  .btn-lamp {
     @apply inline-flex items-center justify-center gap-2 rounded-lg
-           bg-ink px-5 py-2.5 font-medium text-white
+           bg-sodium px-5 py-2.5 font-semibold text-house
            transition-[transform,box-shadow,background-color] duration-200
-           hover:-translate-y-0.5 hover:bg-[#123068] hover:shadow-lift
+           hover:-translate-y-0.5 hover:bg-sodium-hi hover:shadow-lift
            active:translate-y-0
-           disabled:cursor-not-allowed disabled:opacity-40
+           disabled:cursor-not-allowed disabled:opacity-35
            disabled:hover:translate-y-0 disabled:hover:shadow-none;
   }
 
   .btn-plain {
     @apply inline-flex items-center justify-center gap-2 rounded-lg
-           border border-line bg-surface px-5 py-2.5 font-medium text-ink
+           border border-seam bg-riser px-5 py-2.5 font-medium text-lit
            shadow-card transition-[transform,border-color,box-shadow] duration-200
-           hover:-translate-y-0.5 hover:border-line-strong
+           hover:-translate-y-0.5 hover:border-seam-lit
            active:translate-y-0;
   }
 
   .btn-quiet {
     @apply inline-flex items-center justify-center gap-2 rounded-lg
-           border border-line px-4 py-2 text-slate transition-colors duration-150
-           hover:border-line-strong hover:text-ink;
+           border border-seam px-4 py-2 text-dusk transition-colors duration-150
+           hover:border-seam-lit hover:text-lit;
   }
 
   .panel {
-    @apply rounded-xl border border-line bg-surface shadow-card;
+    @apply rounded-xl border border-seam bg-riser shadow-card;
   }
 
-  /* A measured value, drawn from zero when its section reveals. */
+  /* -------------------------------------------------------------- the lighting
+
+     The key light: one warm pool falling from above the fold onto whatever the
+     page opens with. This is the signature — the page is lit rather than
+     coloured, which is the whole claim the product makes about rehearsing.
+
+     Sodium at the centre, cooling through amber to plum at the edge of the
+     throw, because a real lamp loses its warmth before it loses its light.
+
+     The throw is aimable. A lamp is only worth anything if it is pointed at
+     something, and the thing worth lighting is not in the same place on every
+     screen — above the fold on the landing page, on the headline beside the
+     sign-in form. */
+  .key-light {
+    background-image: radial-gradient(
+      ellipse var(--throw-w, 70%) var(--throw-h, 100%) at var(--throw-x, 50%) var(--throw-y, -16%),
+      rgba(255, 174, 59, 0.22) 0%,
+      rgba(255, 133, 60, 0.1) 32%,
+      rgba(146, 74, 168, 0.07) 56%,
+      transparent 80%
+    );
+  }
+
+  /* The room falls off at the edges. Applied over the key light, so the throw
+     has somewhere to end. */
+  .vignette {
+    background-image: radial-gradient(
+      ellipse 92% 74% at 50% 20%,
+      transparent 38%,
+      rgba(8, 4, 11, 0.6) 100%
+    );
+  }
+
+  /* A measured value, drawn from zero when its section reveals. The empty track
+     is seam rather than flat: a track that cannot be seen turns a low score into
+     no score at all, because there is nothing left on screen to read it against. */
   .meter {
-    @apply relative h-1.5 overflow-hidden rounded-full bg-veil;
+    @apply relative h-1.5 overflow-hidden rounded-full bg-seam;
   }
 
   .meter-fill {
     @apply absolute inset-y-0 left-0 rounded-full;
     width: 0;
-    background-image: linear-gradient(90deg, var(--color-azure), var(--color-azure-lift));
+    background-image: linear-gradient(90deg, var(--color-sodium), var(--color-sodium-hi));
+    box-shadow: 0 0 12px -2px rgba(255, 174, 59, 0.6);
     transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
     transition-delay: var(--meter-delay, 0ms);
   }
@@ -222,22 +302,21 @@
      left edge on mount so the reading arrives rather than appearing. */
   .score-marker {
     @apply absolute top-1/2 -translate-x-1/2 -translate-y-1/2;
-    left: min(max(var(--at, 0%), 1.5rem), calc(100% - 1.5rem));
+    left: min(max(var(--at, 0%), 1.75rem), calc(100% - 1.75rem));
     transition: left 1s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* The filament: a hairline threading the three steps in order. It draws from
-     the left when the row reveals, so the sequence is shown as a sequence. */
+  /* The light rail: a hairline threading the three steps in order, lit where the
+     line is actually visible. It draws from the left when the row reveals, so
+     the sequence is shown as a sequence. */
   .filament {
     @apply absolute h-px origin-left;
-    /* Azure lands where the line is actually visible — the two gaps between the
-       three cards, at roughly a third and two thirds of the row. */
     background-image: linear-gradient(
       90deg,
       transparent 0%,
-      var(--color-azure-lift) 16%,
-      var(--color-azure) 50%,
-      var(--color-azure-lift) 84%,
+      var(--color-sodium-hi) 16%,
+      var(--color-sodium) 50%,
+      var(--color-sodium-hi) 84%,
       transparent 100%
     );
     transform: scaleX(0);

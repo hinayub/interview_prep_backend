@@ -1,4 +1,5 @@
 import CueLamp from './CueLamp'
+import ModelCredit from './ModelBadge'
 import { CheckIcon, LightbulbIcon } from './icons'
 import { bandForAnswer } from '../lib/interview'
 
@@ -21,7 +22,7 @@ function ScoreLine({ score }) {
     <div className="flex items-center gap-4">
       <span className="font-display text-3xl font-extrabold tracking-[-0.04em] tabular-nums">
         {score}
-        <span className="ml-0.5 font-sans text-sm font-medium text-mist">/100</span>
+        <span className="ml-0.5 font-sans text-sm font-medium text-shade">/100</span>
       </span>
 
       <div className="min-w-0 flex-1">
@@ -55,16 +56,16 @@ function PointList({ heading, tone, points }) {
           <li
             key={point}
             style={{ animationDelay: `${Math.min(index, 6) * 50}ms` }}
-            className="animate-rise flex gap-2.5 text-sm leading-relaxed text-ink-soft"
+            className="animate-rise flex gap-2.5 text-sm leading-relaxed text-lit-soft"
           >
             {tone === 'good' ? (
-              <CheckIcon className="mt-1 size-3.5 shrink-0 text-mint" />
+              <CheckIcon className="mt-1 size-3.5 shrink-0 text-jade" />
             ) : (
               // A hollow marker, not a cross: an improvement is work to do, where a
               // cross would read as a mistake already made.
               <span
                 aria-hidden="true"
-                className="mt-1.5 size-2 shrink-0 rounded-full border border-line-strong"
+                className="mt-1.5 size-2 shrink-0 rounded-full border border-seam-lit"
               />
             )}
             {point}
@@ -77,20 +78,20 @@ function PointList({ heading, tone, points }) {
 
 function Scoring() {
   return (
-    <div className="border-t border-line px-5 py-5" aria-busy="true">
+    <div className="border-t border-seam px-5 py-5" aria-busy="true">
       <p className="flex items-center gap-2">
         <CueLamp state="live" pulse />
-        <span className="eyebrow text-azure">Scoring your answer</span>
+        <span className="eyebrow text-sodium">Scoring your answer</span>
       </p>
 
       <div aria-hidden="true" className="mt-4 space-y-2.5">
-        <div className="animate-breathe h-3 w-2/3 rounded-full bg-veil" />
-        <div className="animate-breathe h-3 w-full rounded-full bg-veil" />
+        <div className="animate-breathe h-3 w-2/3 rounded-full bg-flat" />
+        <div className="animate-breathe h-3 w-full rounded-full bg-flat" />
       </div>
 
-      <p className="mt-4 text-sm leading-relaxed text-slate" role="status">
-        Your answer is being read. This one runs on a hosted model, so it is usually a
-        few seconds.
+      <p className="mt-4 text-sm leading-relaxed text-dusk" role="status">
+        Your answer is being read by both models at once, and whichever answers first
+        is the score you get. Usually a few seconds.
       </p>
     </div>
   )
@@ -98,14 +99,14 @@ function Scoring() {
 
 function Failed({ evaluation }) {
   return (
-    <div className="border-t border-line px-5 py-5">
-      <p className="eyebrow mb-2 text-flag">Not scored</p>
+    <div className="border-t border-seam px-5 py-5">
+      <p className="eyebrow mb-2 text-tally">Not scored</p>
       {/* The agent's own message: "no API key configured" and "Gemini declined to
           answer" need different responses from the person reading it. */}
-      <p role="alert" className="text-sm leading-relaxed text-ink-soft">
+      <p role="alert" className="text-sm leading-relaxed text-lit-soft">
         {evaluation.error_message || 'This answer could not be scored.'}
       </p>
-      <p className="mt-2 text-sm leading-relaxed text-mist">
+      <p className="mt-2 text-sm leading-relaxed text-shade">
         Your answer is saved either way, and the rest of the interview is unaffected.
       </p>
     </div>
@@ -116,29 +117,41 @@ function Complete({ evaluation }) {
   const hasPoints = Boolean(evaluation.strengths?.length || evaluation.improvements?.length)
 
   return (
-    <div className="animate-rise border-t border-line">
+    <div className="animate-rise border-t border-seam">
       <div className="px-5 py-5">
         <ScoreLine score={evaluation.score ?? 0} />
 
         {evaluation.verdict && (
-          <p className="mt-5 leading-relaxed text-ink-soft">{evaluation.verdict}</p>
+          <p className="mt-5 leading-relaxed text-lit-soft">{evaluation.verdict}</p>
         )}
       </div>
 
       {hasPoints && (
-        <div className="grid gap-7 border-t border-line px-5 py-5 sm:grid-cols-2 sm:gap-8">
+        <div className="grid gap-7 border-t border-seam px-5 py-5 sm:grid-cols-2 sm:gap-8">
           <PointList heading="What worked" tone="good" points={evaluation.strengths} />
           <PointList heading="What to change" tone="work" points={evaluation.improvements} />
         </div>
       )}
 
       {evaluation.model_answer && (
-        <div className="border-t border-line bg-veil/40 px-5 py-5">
+        <div className="border-t border-seam bg-flat/40 px-5 py-5">
           <h5 className="eyebrow mb-2.5 flex items-center gap-1.5">
-            <LightbulbIcon className="size-3.5 text-mist" />
+            <LightbulbIcon className="size-3.5 text-shade" />
             How a strong answer sounds
           </h5>
-          <p className="leading-relaxed text-ink-soft">{evaluation.model_answer}</p>
+          <p className="leading-relaxed text-lit-soft">{evaluation.model_answer}</p>
+        </div>
+      )}
+
+      {/* Last, under everything it explains. A score of 61 reads differently once
+          you know the local model gave it because the hosted one was unreachable. */}
+      {evaluation.model_used && (
+        <div className="border-t border-seam px-5 py-3">
+          <ModelCredit
+            model={evaluation.model_used}
+            note={evaluation.race_note}
+            prefix="Scored by"
+          />
         </div>
       )}
     </div>
