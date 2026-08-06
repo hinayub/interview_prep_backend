@@ -8,7 +8,7 @@ has to leave one behind.
 import pytest
 
 from agents import AgentError
-from conftest import GENERATED_QUESTIONS
+from conftest import GENERATED_QUESTIONS, question_generation
 from interviews.models import InterviewSession
 from interviews.tasks import run_question_generation
 
@@ -31,6 +31,33 @@ def test_the_resume_and_jd_text_are_what_gets_passed_to_the_agent(
     resume_text, jd_text = stub_question_generator.call_args.args
     assert resume_text == session.resume.parsed_text
     assert jd_text == session.job_description.raw_text
+
+
+def test_the_session_records_which_model_wrote_its_questions(
+    session, stub_question_generator
+):
+    run_question_generation(session.pk)
+
+    session.refresh_from_db()
+    assert session.model_used == "llama"
+    assert session.race_note
+
+
+def test_questions_written_by_the_standby_are_still_a_complete_session(session, mocker):
+    """A stopped `ollama serve` used to mean no interview at all. Now it means this."""
+    mocker.patch(
+        "interviews.tasks.generate_questions",
+        return_value=question_generation(
+            model_used="gemini",
+            race_note="Llama 3 (local) failed, so Gemini (hosted) answered instead.",
+        ),
+    )
+
+    assert run_question_generation(session.pk) == InterviewSession.Status.COMPLETE
+
+    session.refresh_from_db()
+    assert session.model_used == "gemini"
+    assert session.questions.count() == len(GENERATED_QUESTIONS)
 
 
 def test_an_agent_failure_is_recorded_not_raised(session, mocker):

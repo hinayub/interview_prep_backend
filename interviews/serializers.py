@@ -31,6 +31,12 @@ class AnswerEvaluationSerializer(serializers.ModelSerializer):
             "strengths",
             "improvements",
             "model_answer",
+            # Which model scored this answer, and how it won the race for it. Sent
+            # on every evaluation because the candidate is entitled to know whose
+            # judgement they are reading - especially when the standby model took
+            # the lane. Not to be confused with ``model_answer`` above.
+            "model_used",
+            "race_note",
             "error_message",
             "created_at",
             "completed_at",
@@ -147,6 +153,8 @@ class SessionReportSerializer(serializers.ModelSerializer):
             "readiness",
             "answers_covered",
             "is_stale",
+            "model_used",
+            "race_note",
             "error_message",
             "created_at",
             "completed_at",
@@ -201,6 +209,11 @@ class InterviewSessionSerializer(serializers.ModelSerializer):
             "company",
             "match_analysis",
             "status",
+            # Which model wrote this session's questions. Same pair as everywhere
+            # else, and here it is the honest answer to "why do these questions
+            # read differently from last time".
+            "model_used",
+            "race_note",
             "error_message",
             "question_count",
             "answered_count",
@@ -215,6 +228,8 @@ class InterviewSessionSerializer(serializers.ModelSerializer):
             "job_title",
             "company",
             "status",
+            "model_used",
+            "race_note",
             "error_message",
             "question_count",
             "answered_count",

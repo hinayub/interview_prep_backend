@@ -3,6 +3,12 @@
 One public function, ``analyze_match``. It owns the prompt, the response schema
 and the tidying of whatever the model hands back, so the Django task that calls
 it stays a five-line "load row, call agent, save row".
+
+Raced across both backends, preferring Gemini: this produces a *score* a candidate
+will act on, so when both models answer the stronger judgement is the one worth
+keeping. Llama is not a consolation prize here - it wins this race whenever the
+hosted lane is unconfigured or down, and a match score from the local model beats
+the empty screen this used to show.
 """
 
 import logging
@@ -10,7 +16,7 @@ import logging
 from django.conf import settings
 
 from . import AgentError
-from .ollama_client import call_llama
+from .race import GEMINI, call_race
 from .text import clean_list, collapse, truncate
 
 logger = logging.getLogger(__name__)
@@ -71,21 +77,30 @@ def analyze_match(resume_text, jd_text):
     """Score ``resume_text`` against ``jd_text``.
 
     Returns ``{"match_score": int, "reasoning": str, "matched_skills": [str],
-    "missing_skills": [str]}``. Raises ``AgentError`` if the model could not
-    produce a usable answer.
+    "missing_skills": [str], "model_used": str, "race_note": str}``. Raises
+    ``AgentError`` only if *neither* model could produce a usable answer.
     """
     if not (resume_text or "").strip():
         raise AgentError("Cannot analyse an empty resume.")
     if not (jd_text or "").strip():
         raise AgentError("Cannot analyse an empty job description.")
 
-    result = call_llama(
-        build_prompt(resume_text, jd_text), MATCH_SCHEMA, system=SYSTEM_PROMPT
+    race = call_race(
+        build_prompt(resume_text, jd_text),
+        MATCH_SCHEMA,
+        system=SYSTEM_PROMPT,
+        # 0.2 for both lanes: a score two models are meant to be comparable on
+        # cannot have one of them running warmer than the other.
+        temperature=0.2,
+        prefer=GEMINI,
     )
+    result = race.data
 
     return {
         "match_score": result["match_score"],
         "reasoning": collapse(result["reasoning"]),
         "matched_skills": clean_list(result["matched_skills"], MAX_SKILLS),
         "missing_skills": clean_list(result["missing_skills"], MAX_SKILLS),
+        "model_used": race.winner,
+        "race_note": race.note,
     }

@@ -1,4 +1,4 @@
-"""The interview question agent. Runs on the local model.
+"""The interview question agent. Prefers the local model.
 
 One public function, ``generate_questions``. Generation from documents already in
 hand is what a 3B model is genuinely good at, and a rehearsal is worth nothing if
@@ -12,6 +12,11 @@ The questions are asked in a fixed shape rather than left to the model's mood:
 Feeding the matcher's ``missing_skills`` back in is what makes this a rehearsal
 for *this* application rather than a generic question bank. A gap the matcher
 found is precisely what a real interviewer will probe.
+
+Raced with a *standby* grace rather than a short one (see ``agents/race.py``):
+Gemini is asked the same thing at the same time but only wins if Llama fails or
+stalls, so the local-first cost design survives while "Ollama is not running"
+stops being the difference between an interview and no interview at all.
 """
 
 import logging
@@ -19,7 +24,7 @@ import logging
 from django.conf import settings
 
 from . import AgentError
-from .ollama_client import call_llama
+from .race import LLAMA, call_race
 from .text import collapse, truncate
 
 logger = logging.getLogger(__name__)
@@ -184,9 +189,9 @@ def _clean(questions, count):
 def generate_questions(resume_text, jd_text, missing_skills=(), count=None):
     """Write interview questions for one resume against one posting.
 
-    Returns a list of ``{"text": str, "category": str, "focus": str}`` in the order
-    they should be asked. Raises ``AgentError`` if the model could not produce a
-    usable set.
+    Returns ``{"questions": [{"text", "category", "focus"}], "model_used": str,
+    "race_note": str}`` with the questions in the order they should be asked.
+    Raises ``AgentError`` if neither model could produce a usable set.
     """
     if not (resume_text or "").strip():
         raise AgentError("Cannot write questions without a resume.")
@@ -195,7 +200,7 @@ def generate_questions(resume_text, jd_text, missing_skills=(), count=None):
 
     count = count or settings.INTERVIEW_QUESTION_COUNT
 
-    result = call_llama(
+    race = call_race(
         build_prompt(resume_text, jd_text, missing_skills, count),
         QUESTION_SCHEMA,
         system=SYSTEM_PROMPT,
@@ -203,13 +208,23 @@ def generate_questions(resume_text, jd_text, missing_skills=(), count=None):
         # come out as eight rewordings of the same one. Scoring wants determinism,
         # generation wants range.
         temperature=0.7,
+        prefer=LLAMA,
+        grace=settings.AGENT_STANDBY_GRACE_SECONDS,
     )
 
-    questions = _clean(result["questions"], count)
+    questions = _clean(race.data["questions"], count)
     if len(questions) < MIN_QUESTIONS:
+        # Deliberately not retried against the other model. The race already gave
+        # both of them this prompt; a set this thin means the prompt and this
+        # resume disagree, and asking the loser the same thing again would only
+        # spend another call to find that out.
         raise AgentError(
             f"The model returned only {len(questions)} usable question(s). Try again."
         )
 
-    logger.info("Generated %d interview questions", len(questions))
-    return questions
+    logger.info("Generated %d interview questions via %s", len(questions), race.winner)
+    return {
+        "questions": questions,
+        "model_used": race.winner,
+        "race_note": race.note,
+    }

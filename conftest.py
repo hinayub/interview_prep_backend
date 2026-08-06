@@ -129,12 +129,29 @@ def media_to_tmp(settings, tmp_path):
 
 # What a well-behaved analyzer run returns. Kept here so the task tests, the API
 # tests and the serializer tests all assert against one shape.
+#
+# No ``model_used``/``race_note``: the agent functions always add them, but the
+# rows are documented as tolerating a result without them, and leaving them out of
+# the shared fixture is what keeps that tolerance covered. The tests that care
+# about attribution pass them explicitly.
 MATCH_RESULT = {
     "match_score": 78,
     "reasoning": "You match the Django and Celery requirements directly. Kubernetes is absent.",
     "matched_skills": ["Python", "Django", "Celery", "PostgreSQL"],
     "missing_skills": ["Kubernetes", "Terraform"],
 }
+
+
+def race_won(data, winner="gemini", note="", seconds=1.0):
+    """A finished race, for the agent tests that mock ``call_race``.
+
+    Built here rather than in each test module because all three agents now return
+    through the same object, and a helper that lives with the other shared shapes
+    keeps them asserting against one.
+    """
+    from agents.race import RaceResult
+
+    return RaceResult(data, winner, note=note or f"{winner} answered first.", seconds=seconds)
 
 
 @pytest.fixture(autouse=True)
@@ -276,12 +293,20 @@ def open_session(session):
     return session
 
 
+def question_generation(**overrides):
+    """What a well-behaved question_generator run returns, race attribution included."""
+    return {
+        "questions": [dict(question) for question in GENERATED_QUESTIONS],
+        "model_used": "llama",
+        "race_note": "Llama 3 (local) answered first, in 38.4s.",
+        **overrides,
+    }
+
+
 @pytest.fixture
 def stub_question_generator(mocker):
     """Replace the LLM call the question task makes. Returns the mock."""
-    return mocker.patch(
-        "interviews.tasks.generate_questions", return_value=[dict(q) for q in GENERATED_QUESTIONS]
-    )
+    return mocker.patch("interviews.tasks.generate_questions", return_value=question_generation())
 
 
 @pytest.fixture

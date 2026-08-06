@@ -4,6 +4,10 @@ Same seam as ``resumes.tasks`` - the only module that knows both that
 ``InterviewSession`` is a table and that ``generate_questions`` is an LLM call.
 
     resume text + JD text + the matcher's gaps  ->  Llama 3  ->  Question rows
+
+"Llama 3" there is the preference, not a guarantee: the prompt goes to both
+backends and the local one wins unless it fails (see ``agents/race.py``). Which
+model actually wrote a session's questions is recorded on the row.
 """
 
 import logging
@@ -57,7 +61,7 @@ def run_question_generation(session_id):
     )
 
     try:
-        questions = generate_questions(
+        result = generate_questions(
             session.resume.parsed_text,
             session.job_description.raw_text,
             missing_skills=missing_skills,
@@ -73,6 +77,12 @@ def run_question_generation(session_id):
         session.mark_failed(f"Unexpected error: {exc}")
         return session.status
 
-    session.mark_complete(questions)
-    logger.info("InterviewSession %s ready with %d questions", session_id, len(questions))
+    questions = result["questions"]
+    session.mark_complete(questions, result)
+    logger.info(
+        "InterviewSession %s ready with %d questions from %s",
+        session_id,
+        len(questions),
+        result.get("model_used") or "an unrecorded model",
+    )
     return session.status

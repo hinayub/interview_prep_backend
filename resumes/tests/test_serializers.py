@@ -177,6 +177,18 @@ def test_match_serializer_output_carries_what_the_poller_needs(analysis):
     assert data["job_title"] == "Senior Python Engineer"
 
 
+def test_match_serializer_output_names_the_model_that_produced_the_score(analysis):
+    """The client cannot label a score it was never told the provenance of."""
+    analysis.mark_complete(
+        {**MATCH_RESULT, "model_used": "llama", "race_note": "Gemini was unavailable."}
+    )
+
+    data = MatchAnalysisSerializer(analysis).data
+
+    assert data["model_used"] == "llama"
+    assert data["race_note"] == "Gemini was unavailable."
+
+
 def test_match_serializer_output_of_a_failed_row_explains_itself(analysis):
     analysis.mark_failed("Cannot reach Ollama")
 

@@ -17,15 +17,17 @@ from agents.evaluator import (
     build_report_prompt,
     evaluate_answer,
 )
-from conftest import ANSWER_EVALUATION, SESSION_REPORT
+from agents.race import GEMINI, LLAMA
+from conftest import ANSWER_EVALUATION, SESSION_REPORT, race_won
 
 QUESTION = "You migrated a monolith to Celery - what broke first?"
 ANSWER = "Task idempotency broke first. We were retrying non-idempotent tasks."
 
 
 @pytest.fixture
-def gemini(mocker):
-    return mocker.patch("agents.evaluator.call_gemini")
+def race(mocker):
+    """Stand in for the whole race. Set ``.return_value`` to change what won."""
+    return mocker.patch("agents.evaluator.call_race")
 
 
 def scored(index=1, **overrides):
@@ -85,8 +87,8 @@ def test_an_over_long_answer_is_truncated_to_the_budget(settings):
 # --- pass one: the result -----------------------------------------------------
 
 
-def test_returns_the_scored_answer(gemini):
-    gemini.return_value = dict(ANSWER_EVALUATION)
+def test_returns_the_scored_answer(race):
+    race.return_value = race_won(dict(ANSWER_EVALUATION))
 
     result = evaluate_answer(QUESTION, ANSWER)
 
@@ -95,28 +97,51 @@ def test_returns_the_scored_answer(gemini):
     assert result["model_answer"]
 
 
-def test_the_answer_schema_and_a_system_prompt_are_sent(gemini):
-    gemini.return_value = dict(ANSWER_EVALUATION)
+def test_the_answer_schema_and_a_system_prompt_are_sent(race):
+    race.return_value = race_won(dict(ANSWER_EVALUATION))
 
     evaluate_answer(QUESTION, ANSWER)
 
-    assert gemini.call_args.args[1] == ANSWER_SCHEMA
-    assert gemini.call_args.kwargs["system"]
+    assert race.call_args.args[1] == ANSWER_SCHEMA
+    assert race.call_args.kwargs["system"]
 
 
-def test_scoring_runs_cold_so_the_same_answer_scores_the_same(gemini):
-    gemini.return_value = dict(ANSWER_EVALUATION)
+def test_scoring_runs_cold_so_the_same_answer_scores_the_same(race):
+    race.return_value = race_won(dict(ANSWER_EVALUATION))
 
     evaluate_answer(QUESTION, ANSWER)
 
-    assert gemini.call_args.kwargs["temperature"] <= 0.2
+    assert race.call_args.kwargs["temperature"] <= 0.2
 
 
-def test_duplicate_feedback_points_are_collapsed(gemini):
-    gemini.return_value = {
-        **ANSWER_EVALUATION,
-        "improvements": ["Add a number", "add a number", "Name the service"],
-    }
+def test_the_hosted_model_is_preferred_for_judging_an_answer(race):
+    """The judgement the product sells. Llama takes it only when Gemini cannot."""
+    race.return_value = race_won(dict(ANSWER_EVALUATION))
+
+    evaluate_answer(QUESTION, ANSWER)
+
+    assert race.call_args.kwargs["prefer"] == GEMINI
+
+
+def test_a_score_says_which_model_gave_it(race):
+    """A candidate reading 72/100 is entitled to know whose judgement that is."""
+    race.return_value = race_won(
+        dict(ANSWER_EVALUATION), LLAMA, note="Gemini failed, so Llama scored this."
+    )
+
+    result = evaluate_answer(QUESTION, ANSWER)
+
+    assert result["model_used"] == LLAMA
+    assert "Gemini failed" in result["race_note"]
+
+
+def test_duplicate_feedback_points_are_collapsed(race):
+    race.return_value = race_won(
+        {
+            **ANSWER_EVALUATION,
+            "improvements": ["Add a number", "add a number", "Name the service"],
+        }
+    )
 
     assert evaluate_answer(QUESTION, ANSWER)["improvements"] == [
         "Add a number",
@@ -124,19 +149,19 @@ def test_duplicate_feedback_points_are_collapsed(gemini):
     ]
 
 
-def test_an_empty_answer_never_reaches_the_model(gemini):
+def test_an_empty_answer_never_reaches_the_model(race):
     """It would get a confident zero and a critique of nothing."""
     with pytest.raises(AgentError, match="empty answer"):
         evaluate_answer(QUESTION, "   ")
 
-    gemini.assert_not_called()
+    race.assert_not_called()
 
 
-def test_a_missing_question_never_reaches_the_model(gemini):
+def test_a_missing_question_never_reaches_the_model(race):
     with pytest.raises(AgentError, match="without the question"):
         evaluate_answer("", ANSWER)
 
-    gemini.assert_not_called()
+    race.assert_not_called()
 
 
 # --- pass two: the report -----------------------------------------------------
@@ -172,8 +197,8 @@ def test_an_answer_with_no_improvements_says_so_rather_than_trailing_off():
     assert "nothing recorded" in prompt
 
 
-def test_returns_the_report(gemini):
-    gemini.return_value = dict(SESSION_REPORT)
+def test_returns_the_report(race):
+    race.return_value = race_won(dict(SESSION_REPORT))
 
     result = build_report([scored(1), scored(2)])
 
@@ -182,17 +207,23 @@ def test_returns_the_report(gemini):
     assert result["priorities"] == SESSION_REPORT["priorities"]
 
 
-def test_the_report_schema_and_a_system_prompt_are_sent(gemini):
-    gemini.return_value = dict(SESSION_REPORT)
+def test_the_report_schema_and_a_system_prompt_are_sent(race):
+    race.return_value = race_won(dict(SESSION_REPORT))
 
     build_report([scored(1)])
 
-    assert gemini.call_args.args[1] == REPORT_SCHEMA
-    assert gemini.call_args.kwargs["system"]
+    assert race.call_args.args[1] == REPORT_SCHEMA
+    assert race.call_args.kwargs["system"]
 
 
-def test_no_scored_answers_is_an_error_not_an_empty_report(gemini):
+def test_the_report_says_which_model_wrote_it(race):
+    race.return_value = race_won(dict(SESSION_REPORT), LLAMA)
+
+    assert build_report([scored(1)])["model_used"] == LLAMA
+
+
+def test_no_scored_answers_is_an_error_not_an_empty_report(race):
     with pytest.raises(AgentError, match="no evaluated answers"):
         build_report([])
 
-    gemini.assert_not_called()
+    race.assert_not_called()

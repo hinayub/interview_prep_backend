@@ -75,6 +75,11 @@ class MatchAnalysis(models.Model):
     )
 
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    # Which model produced this score, and how it won - see agents/race.py. Mirrors
+    # the pair on ``interviews.AgentJob``; this table predates that base class and
+    # still carries its own copy of the state machine.
+    model_used = models.CharField(max_length=16, blank=True)
+    race_note = models.CharField(max_length=300, blank=True)
     match_score = models.PositiveSmallIntegerField(null=True, blank=True)
     reasoning = models.TextField(blank=True)
     # JSONField rather than a related Skill table: these are free-text strings a
@@ -102,6 +107,10 @@ class MatchAnalysis(models.Model):
         self.reasoning = result["reasoning"]
         self.matched_skills = result.get("matched_skills", [])
         self.missing_skills = result.get("missing_skills", [])
+        # Blank when absent rather than required: fixtures and tests build result
+        # dicts by hand, and an unattributed score is not a broken one.
+        self.model_used = (result.get("model_used") or "")[:16]
+        self.race_note = (result.get("race_note") or "")[:300]
         self.error_message = ""
         self.completed_at = timezone.now()
         self.save(
@@ -111,6 +120,8 @@ class MatchAnalysis(models.Model):
                 "reasoning",
                 "matched_skills",
                 "missing_skills",
+                "model_used",
+                "race_note",
                 "error_message",
                 "completed_at",
             ]

@@ -47,7 +47,16 @@ class AgentJob(models.Model):
 
     TERMINAL_STATUSES = (Status.COMPLETE, Status.FAILED)
 
+    # Which model actually produced this result, and the one-line story of how it
+    # was chosen. Both prompts go to both backends and the first valid answer wins
+    # (see agents/race.py), so "who wrote this" is a per-row fact rather than a
+    # deployment-wide one - and it is shown to the candidate, because a score is
+    # not worth much if you cannot tell which model gave it to you.
+    RACE_FIELDS = ("model_used", "race_note")
+
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    model_used = models.CharField(max_length=16, blank=True)
+    race_note = models.CharField(max_length=300, blank=True)
     error_message = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -63,19 +72,38 @@ class AgentJob(models.Model):
         """Record why the agent could not produce a result.
 
         Truncated because ``message`` is an exception string that can carry a whole
-        model response, and this text is rendered straight into the UI.
+        model response, and this text is rendered straight into the UI. When both
+        lanes of a race fail, that string carries both reasons.
         """
         self.status = self.Status.FAILED
         self.error_message = str(message)[:1000]
         self.completed_at = timezone.now()
         self.save(update_fields=["status", "error_message", "completed_at"])
 
+    def _record_race(self, result):
+        """Copy the race outcome off an agent result dict.
+
+        Tolerant of a result without it: the agent functions always supply these
+        keys, but tests and fixtures build result dicts by hand and a missing
+        attribution is a blank field, not an error.
+        """
+        self.model_used = (result.get("model_used") or "")[:16]
+        self.race_note = (result.get("race_note") or "")[:300]
+
     def _finish(self, result_fields=()):
         """Flip to complete and persist, called by a subclass that has set results."""
         self.status = self.Status.COMPLETE
         self.error_message = ""
         self.completed_at = timezone.now()
-        self.save(update_fields=[*result_fields, "status", "error_message", "completed_at"])
+        self.save(
+            update_fields=[
+                *result_fields,
+                *self.RACE_FIELDS,
+                "status",
+                "error_message",
+                "completed_at",
+            ]
+        )
 
 
 class InterviewSession(AgentJob):
@@ -117,13 +145,18 @@ class InterviewSession(AgentJob):
     def answered_count(self):
         return Answer.objects.filter(question__session=self).count()
 
-    def mark_complete(self, questions):
+    def mark_complete(self, questions, result=None):
         """Persist a generated question set and open the session.
 
         The insert and the status flip share a transaction: a client polling between
         the two would otherwise see a complete session with no questions in it and
         render an empty interview.
+
+        ``result`` is the whole dict ``generate_questions`` returned, and is only
+        read for the race attribution - the questions are passed separately because
+        this is also called with a hand-built list by fixtures.
         """
+        self._record_race(result or {})
         with transaction.atomic():
             Question.objects.bulk_create(
                 Question(

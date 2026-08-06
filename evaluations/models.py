@@ -50,6 +50,9 @@ class AnswerEvaluation(AgentJob):
         self.strengths = result.get("strengths", [])
         self.improvements = result.get("improvements", [])
         self.model_answer = result.get("model_answer", "")
+        # ``model_used`` is which model scored the answer; ``model_answer`` just
+        # above is the ideal answer it wrote. Adjacent names, unrelated things.
+        self._record_race(result)
         self._finish(self.RESULT_FIELDS)
 
     def reset(self):
@@ -70,8 +73,19 @@ class AnswerEvaluation(AgentJob):
         self.strengths = []
         self.improvements = []
         self.model_answer = ""
+        # Cleared with the rest of it: the re-run races again from scratch and may
+        # well land on the other model, so last attempt's attribution is not a
+        # prediction of this one's.
+        self.model_used = ""
+        self.race_note = ""
         self.save(
-            update_fields=[*self.RESULT_FIELDS, "status", "error_message", "completed_at"]
+            update_fields=[
+                *self.RESULT_FIELDS,
+                *self.RACE_FIELDS,
+                "status",
+                "error_message",
+                "completed_at",
+            ]
         )
 
     def __str__(self):
@@ -126,6 +140,7 @@ class SessionReport(AgentJob):
         self.priorities = result.get("priorities", [])
         self.readiness = result.get("readiness", "")
         self.answers_covered = answers_covered
+        self._record_race(result)
         self._finish(self.RESULT_FIELDS)
 
     def reset(self):
@@ -145,8 +160,16 @@ class SessionReport(AgentJob):
         self.priorities = []
         self.readiness = ""
         self.answers_covered = 0
+        self.model_used = ""
+        self.race_note = ""
         self.save(
-            update_fields=[*self.RESULT_FIELDS, "status", "error_message", "completed_at"]
+            update_fields=[
+                *self.RESULT_FIELDS,
+                *self.RACE_FIELDS,
+                "status",
+                "error_message",
+                "completed_at",
+            ]
         )
 
     def __str__(self):

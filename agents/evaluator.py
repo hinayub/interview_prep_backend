@@ -1,4 +1,4 @@
-"""The scoring agents. These run on the hosted model.
+"""The scoring agents. These prefer the hosted model.
 
 Two public functions, and the split between them is the two-pass design the
 package docstring promises:
@@ -12,9 +12,15 @@ notes from pass one*, never the raw answers again - which keeps the final prompt
 small and, more importantly, makes the report agree with the per-answer feedback
 the candidate already read instead of re-judging from scratch and contradicting it.
 
-Both are here rather than on the local model because this is the judgement the
-product is ultimately selling. A 3B model can write a question; telling someone
-their answer was evasive, and why, is a different job.
+Both prefer the hosted model because this is the judgement the product is
+ultimately selling. A 3B model can write a question; telling someone their answer
+was evasive, and why, is a different job.
+
+Both are still raced (see ``agents/race.py``), and that matters most here: this is
+the one place the app used to stop dead without a ``GEMINI_API_KEY``. Llama now
+takes the lane when the hosted model is unconfigured, blocked or retired, and the
+row records which model scored the answer so a candidate is never shown a number
+without being told who wrote it.
 """
 
 import logging
@@ -22,7 +28,7 @@ import logging
 from django.conf import settings
 
 from . import AgentError
-from .gemini_client import call_gemini
+from .race import GEMINI, call_race
 from .text import clean_list, collapse, truncate
 
 logger = logging.getLogger(__name__)
@@ -169,8 +175,9 @@ def evaluate_answer(question_text, answer_text, *, focus="", job_title="", compa
     """Score one answer to one question.
 
     Returns ``{"score": int, "verdict": str, "strengths": [str],
-    "improvements": [str], "model_answer": str}``. Raises ``AgentError`` if the
-    model could not produce a usable judgement.
+    "improvements": [str], "model_answer": str, "model_used": str,
+    "race_note": str}``. Raises ``AgentError`` only if neither model could produce
+    a usable judgement.
     """
     if not collapse(question_text):
         raise AgentError("Cannot evaluate an answer without the question.")
@@ -179,7 +186,7 @@ def evaluate_answer(question_text, answer_text, *, focus="", job_title="", compa
         # confident zero and a hallucinated critique of nothing.
         raise AgentError("Cannot evaluate an empty answer.")
 
-    result = call_gemini(
+    race = call_race(
         build_answer_prompt(
             question_text, answer_text, focus=focus, job_title=job_title, company=company
         ),
@@ -187,7 +194,9 @@ def evaluate_answer(question_text, answer_text, *, focus="", job_title="", compa
         system=ANSWER_SYSTEM_PROMPT,
         # Low: two candidates who gave the same answer should get the same score.
         temperature=0.2,
+        prefer=GEMINI,
     )
+    result = race.data
 
     return {
         "score": result["score"],
@@ -195,6 +204,8 @@ def evaluate_answer(question_text, answer_text, *, focus="", job_title="", compa
         "strengths": clean_list(result["strengths"], MAX_POINTS),
         "improvements": clean_list(result["improvements"], MAX_POINTS),
         "model_answer": collapse(result["model_answer"]),
+        "model_used": race.winner,
+        "race_note": race.note,
     }
 
 
@@ -227,20 +238,26 @@ def build_report(scored_answers, *, job_title="", company=""):
     ``improvements`` - that is, the output of pass one joined to its question.
 
     Returns ``{"overall_score": int, "headline": str, "summary": str,
-    "strengths": [str], "priorities": [str], "readiness": str}``.
+    "strengths": [str], "priorities": [str], "readiness": str, "model_used": str,
+    "race_note": str}``.
     """
     if not scored_answers:
         raise AgentError("There are no evaluated answers to report on yet.")
 
-    result = call_gemini(
+    race = call_race(
         build_report_prompt(scored_answers, job_title=job_title, company=company),
         REPORT_SCHEMA,
         system=REPORT_SYSTEM_PROMPT,
         temperature=0.3,
+        prefer=GEMINI,
     )
+    result = race.data
 
     logger.info(
-        "Built report over %d answers, overall %s", len(scored_answers), result["overall_score"]
+        "Built report over %d answers via %s, overall %s",
+        len(scored_answers),
+        race.winner,
+        result["overall_score"],
     )
     return {
         "overall_score": result["overall_score"],
@@ -249,4 +266,6 @@ def build_report(scored_answers, *, job_title="", company=""):
         "strengths": clean_list(result["strengths"], MAX_POINTS),
         "priorities": clean_list(result["priorities"], MAX_POINTS),
         "readiness": result["readiness"],
+        "model_used": race.winner,
+        "race_note": race.note,
     }

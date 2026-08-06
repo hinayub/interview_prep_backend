@@ -106,6 +106,38 @@ def test_mark_complete_tolerates_a_result_without_skill_lists(analysis):
     assert analysis.missing_skills == []
 
 
+def test_mark_complete_records_which_model_won_the_race(analysis):
+    """The score is only half the story once two models can produce it."""
+    analysis.mark_complete(
+        {
+            **MATCH_RESULT,
+            "model_used": "llama",
+            "race_note": "Gemini failed, so Llama 3 (local) answered instead.",
+        }
+    )
+    analysis.refresh_from_db()
+
+    assert analysis.model_used == "llama"
+    assert analysis.race_note.startswith("Gemini failed")
+
+
+def test_mark_complete_tolerates_a_result_with_no_attribution(analysis):
+    """Fixtures build results by hand; an unattributed score is not a broken one."""
+    analysis.mark_complete(MATCH_RESULT)
+    analysis.refresh_from_db()
+
+    assert analysis.model_used == ""
+    assert analysis.race_note == ""
+
+
+def test_an_over_long_race_note_is_truncated_to_the_column(analysis):
+    """The note quotes a loser's error, and those carry whole model responses."""
+    analysis.mark_complete({**MATCH_RESULT, "race_note": "x" * 900})
+    analysis.refresh_from_db()
+
+    assert len(analysis.race_note) == 300
+
+
 def test_mark_complete_clears_a_previous_error(analysis):
     analysis.mark_failed("Ollama unreachable")
 

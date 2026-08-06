@@ -14,6 +14,7 @@ env = environ.Env(
     OLLAMA_MODEL=(str, "llama3.2:3b"),
     GEMINI_API_KEY=(str, ""),
     GEMINI_MODEL=(str, "gemini-3.6-flash"),
+    AGENT_RACE=(bool, True),
     TASK_RUNNER=(str, "thread"),
     CELERY_BROKER_URL=(str, "redis://localhost:6379/0"),
 )
@@ -145,6 +146,27 @@ OLLAMA_BASE_URL = env("OLLAMA_BASE_URL")
 OLLAMA_MODEL = env("OLLAMA_MODEL")
 GEMINI_API_KEY = env("GEMINI_API_KEY")
 GEMINI_MODEL = env("GEMINI_MODEL")
+
+# Send every agent prompt to both models at once and keep the first valid answer;
+# see agents/race.py. On by default because it is what makes a missing API key or a
+# stopped `ollama serve` a degraded feature rather than a dead one. Set False to go
+# back to one model per job - useful when metering hosted tokens.
+AGENT_RACE = env("AGENT_RACE")
+
+# How long a job that prefers one model will wait for it once the *other* model has
+# already answered. Two numbers because the two kinds of job want opposite things:
+#
+#   RACE    the judgement jobs. The hosted model is preferred and normally faster,
+#           so this only stops a fast local answer from beating a hosted one that
+#           was a moment away.
+#   STANDBY the generation jobs, which stay local for cost and privacy. Long enough
+#           that the local model wins whenever it works at all, so the hosted lane
+#           is a standby that costs nothing but tokens on the runs it is needed.
+#
+# Neither can make a job slower than the model it prefers: the clock starts only
+# after the non-preferred model has answered.
+AGENT_RACE_GRACE_SECONDS = 10.0
+AGENT_STANDBY_GRACE_SECONDS = 120.0
 
 # Prompt budget. llama3.2:3b advertises a large context but degrades badly long
 # before it, and every extra token is CPU seconds on this box. Two pages of

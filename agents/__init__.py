@@ -3,22 +3,35 @@
 Not a Django app - no models, no migrations. Just service functions, each doing
 one job and returning validated JSON rather than raw model text.
 
-Two model backends, and which one a job runs on is a deliberate split rather than
-a fallback chain:
+Two model backends:
 
     ollama_client.py      call_llama  - local Llama 3. Cheap, private, unlimited.
     gemini_client.py      call_gemini - hosted Gemini. Better judgement, costs money.
 
-Generation from documents already in hand goes local; judging a person's answer
-and writing the report they take away goes hosted:
+Both present the same contract - prompt and schema in, schema-valid dict out,
+``AgentError`` on anything else - which is what lets a third client sit on top of
+them and ask them both at once:
 
-    resume_analyzer.py    llama  -> {match_score, reasoning, matched/missing_skills}
-    question_generator.py llama  -> [{text, category, focus}]
-    evaluator.py          gemini -> per-answer scores, then one report over them
+    race.py               call_race   - one prompt, both models, keep the first
+                                        valid answer; a failure just loses the race.
 
-Both clients present the same contract - prompt and schema in, schema-valid dict
-out, ``AgentError`` on anything else - so the modules above do not have to care
-which one they are calling, and moving a job between them is a one-line change.
+So every job runs on both, and what each job declares is which answer it would
+rather have when both arrive. Generation from documents in hand prefers local;
+judging a person's answer and writing the report they take away prefers hosted:
+
+    resume_analyzer.py    prefer gemini -> {match_score, reasoning, matched/missing_skills}
+    question_generator.py prefer llama  -> {questions: [{text, category, focus}]}
+    evaluator.py          prefer gemini -> per-answer scores, then one report over them
+
+Each returns its result plus ``model_used`` and ``race_note`` saying which model
+actually produced it and why, because a candidate reading a score is entitled to
+know which model wrote it. The owning row stores both.
+
+The preference used to be the whole story - one job, one backend - and the cost of
+that was that each feature needed exactly one backend to be healthy: no
+``GEMINI_API_KEY`` meant no scoring at all, a stopped ``ollama serve`` meant no
+interview at all. Racing keeps the preference and drops that dependency. Set
+``AGENT_RACE=False`` to go back to one model per job.
 """
 
 

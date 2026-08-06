@@ -54,6 +54,36 @@ def test_the_question_its_focus_and_the_role_all_reach_the_agent(
     assert kwargs["job_title"] == evaluation.answer.question.session.job_description.title
 
 
+def test_an_answer_scored_by_the_standby_records_that_it_was(evaluation, mocker):
+    """Scoring used to die outright without a key. Now it degrades and says so."""
+    mocker.patch(
+        "evaluations.tasks.evaluate_answer",
+        return_value={
+            **ANSWER_EVALUATION,
+            "model_used": "llama",
+            "race_note": "Gemini (hosted) failed, so Llama 3 (local) answered instead.",
+        },
+    )
+
+    assert run_answer_evaluation(evaluation.pk) == AnswerEvaluation.Status.COMPLETE
+
+    evaluation.refresh_from_db()
+    assert evaluation.score == ANSWER_EVALUATION["score"]
+    assert evaluation.model_used == "llama"
+    assert "Gemini (hosted) failed" in evaluation.race_note
+
+
+def test_rescoring_clears_the_previous_attribution(evaluation, mocker):
+    """The re-run races again and may land elsewhere, so last run's badge must go."""
+    evaluation.mark_complete({**ANSWER_EVALUATION, "model_used": "llama"})
+
+    evaluation.reset()
+    evaluation.refresh_from_db()
+
+    assert evaluation.model_used == ""
+    assert evaluation.race_note == ""
+
+
 def test_an_agent_failure_is_recorded_not_raised(evaluation, mocker):
     mocker.patch(
         "evaluations.tasks.evaluate_answer", side_effect=AgentError("No Gemini API key")
